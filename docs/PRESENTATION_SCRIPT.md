@@ -1,210 +1,206 @@
 # Final presentation script
 
 Deck: https://claude.ai/artifact/DcTzME7BdhKnFpu2SZ4NiS (speaker notes hold this same text).
-Target **≈ 11:20**, hard stop **12:00**. Speaker tags are suggestions: P1 = data/core, P2 = model, P3 = app/story.
+Target **≈ 11:35**, hard stop **12:00**. Speaker tags are suggestions: P1 = data/core, P2 = model, P3 = app/story.
+
+Delivery cues: **(PAUSE)** = let the rhetorical question land, about 1 s. **(BEAT)** = tiny comic pause before the punchline. **(CLICK)** = advance the next card. **(SWITCH)** = go to the browser.
 
 | # | Slide | Speaker · time |
 |---|---|---|
-| 1 | Lunar South Pole Site Ranker | P3 · 0:20 · start the clock |
-| 2 | The most contested ground off Earth | P3 · 0:50 |
-| 3 | The data exists. It doesn’t fit together. | P1 · 0:50 |
-| 4 | Two questions, every square kilometre | P3 · 0:35 |
-| 5 | One grid. Every layer. One rule. | P1 · 1:05 |
-| 6 | Real where we have it. Labelled where we don’t. | P1 · 0:50 |
-| 7 | Built to survive missing data | P2 · 0:45 |
+| 1 | Lunar South Pole Site Ranker | P3 · 0:25 · start the clock |
+| 2 | Why would anyone park at the south pole? | P3 · 0:55 |
+| 3 | So just look at a map. Easy, right? | P1 · 0:50 |
+| 4 | Two questions. 288,000 times. | P3 · 0:35 |
+| 5 | Eight steps. Zero magic. | P1 · 1:05 |
+| 6 | How much of this is actually real? | P1 · 0:55 |
+| 7 | No answer key? No problem. (Kind of.) | P2 · 0:45 |
 | 8 | LIVE DEMO | P3 drives, P1 narrates · 2:15 · SWITCH TO THE BROWSER. Have the app open and loaded beforehand. Backup: screen recording. |
-| 9 | What the numbers say | P2 · 0:40 |
+| 9 | Did the fancy model win? | P2 · 0:40 |
 | 10 | We checked against NASA. We missed. | P2 · 0:50 |
-| 11 | What this is not (yet) | P1 · 1:00 |
-| 12 | Where it goes next | P2 · 0:50 |
-| 13 | Decision support, not decisions. | P3 · 0:30 · total ≈ 11:20 |
+| 11 | Things we won’t pretend about | P1 · 1:00 |
+| 12 | What happens with more than one night? | P2 · 0:50 |
+| 13 | Decision support, not decisions. | P3 · 0:30 · total ≈ 11:35 |
 
 Rehearse with a timer. If you are over 11:30 at slide 10, cut the six drawbacks to the top three (labels, coverage, resolution).
 
 ## 1. Lunar South Pole Site Ranker
 
-[P3 · 0:20 · start the clock]
+[P3 · 0:25 · start the clock]
 
-Good morning. We are Team Optima Luna. In the next ten minutes we’ll show you a tool that answers three questions about the Moon’s south pole: where is it safe to land, where is the ice, and — the part most tools skip — how sure are we about each answer.
+Quick question. (PAUSE) If you had to park a lander worth a couple of billion dollars on the Moon, where would you put it?
 
-It covers everything from 80 degrees south to the pole, cut into 290,364 one-kilometre cells, built on real NASA LOLA laser-altimeter data. Let’s start with why anyone cares about this patch of the Moon.
-## 2. The most contested ground off Earth
+(BEAT) “Somewhere flat” — correct, gold star. Also somewhere sunny, for power. Also somewhere near water ice, so the astronauts can drink, breathe and make rocket fuel. And ideally all three within driving distance.
 
-[P3 · 0:50]
+That is exactly what we built: a map of the lunar south pole that tells you where to land, where the ice is, and how sure it is about both.
 
-The lunar south pole is the most contested real estate off Earth, for two reasons that sit right next to each other.
+We’re Team Optima Luna — I’m [Name], with [Name] and [Name] — and for the next eleven minutes we are going to over-explain the Moon to you. Sorry in advance. (BEAT) Not really.
+## 2. Why would anyone park at the south pole?
 
-First, water ice. The Moon’s spin axis is almost upright, so near the pole the Sun skims the horizon and the floors of deep craters never see it. Those permanently shadowed craters are cold traps, and they hold water ice — drinking water, oxygen, rocket fuel, made on the Moon instead of hauled from Earth.
+[P3 · 0:55]
 
-Second, sunlight. A few kilometres away, crater rims and ridges stay lit for long stretches, which means solar power and milder temperatures.
+So — why would anyone park at the south pole? (PAUSE)
 
-That is why NASA’s Artemis, ISRO’s Chandrayaan programme and the ISRO–JAXA LUPEX mission all point here.
+Fun fact: the Moon’s axis is tilted only about one and a half degrees. Earth is tilted twenty-three and a half — that’s why we get seasons. The Moon basically doesn’t, so near the poles the Sun just… sits on the horizon. Forever. (CLICK)
 
-The catch: the ice is in the dark and the power is in the light. The best site is a trade-off between the two, a few kilometres apart. Finding that trade-off is the problem.
-## 3. The data exists. It doesn’t fit together.
+That does two wonderfully weird things at once. First: some crater floors have not seen sunlight in billions of years. These permanently shadowed regions are among the coldest places ever measured in the solar system — cold enough that water ice just sits there, untouched. (CLICK)
+
+Second: some ridges and rims stick up high enough to catch that sideways sunlight almost all the time. Perfect for solar panels. (CLICK)
+
+So you get “always sunny” and “never sunny, full of ice” a few kilometres apart. Which is why Artemis, Chandrayaan and LUPEX are all heading here. (BEAT) It is, honestly, the most contested parking lot off Earth.
+## 3. So just look at a map. Easy, right?
 
 [P1 · 0:50]
 
-The data to make this decision already exists. The problem is that it doesn’t fit together.
+So — just look at a map and pick a spot. Easy, right? (PAUSE) (BEAT) It was not easy.
 
-It’s scattered: terrain and sunlight from NASA’s LOLA laser altimeter sit on NASA’s Planetary Geodesy archive; temperatures from LRO’s Diviner sit on the Planetary Data System; ice radar and spectra from Chandrayaan-2 sit on ISRO’s PRADAN portal, behind registration.
+The data absolutely exists. NASA and ISRO have mapped this region in ridiculous detail. The problem is the data does not want to be friends with itself.
 
-It’s mismatched: different map projections, resolutions from 20 metres to hundreds of metres, raster images in one place and 600-megabyte text tables in another.
+One: it’s scattered — NASA’s geodesy archive, the Planetary Data System, ISRO’s PRADAN portal. (CLICK)
 
-And it’s patchy: some layers have gaps, some aren’t downloadable in a night, and one NASA server we needed throttles every connection to about 15 kilobytes a second — our teammate’s first download estimate was 45 hours.
+Two: it’s mismatched — different instruments flatten the round Moon into different map projections, at resolutions from 25 centimetres a pixel to hundreds of metres a pixel. (CLICK)
 
-So comparing two candidate sites today means stitching all of this together by hand. We wanted one map where every layer lines up, every number is traceable to its source, and the gaps are shown, not hidden.
-## 4. Two questions, every square kilometre
+Three: it’s patchy — gaps, missing layers, and registration walls before you can download a single file. (CLICK)
+
+So nobody hands you one map that says “land here, the ice is over there, and here’s why.” (BEAT) That’s the gap we went after.
+## 4. Two questions. 288,000 times.
 
 [P3 · 0:35]
 
-So our problem statement is deliberately narrow. For every one-kilometre cell between 80 degrees south and the pole, answer two questions.
+So here’s our problem statement, and it’s just two questions. (CLICK)
 
-A: is it safe to land here — flat enough, smooth enough, sunlit enough?
+Question A: can I land here without falling over? (CLICK)
 
-B: is it worth going to — is there evidence of ice, cold enough to keep it?
+Question B: is there ice worth driving to?
 
-Then pair the answers: for each good landing cell, find the best resource cell within ten kilometres of driving.
+We ask both of those for every single square kilometre of the south pole — that’s about 288,000 times. Then we pair the good answers within 10 kilometres, which is a reasonable rover drive, and we put a confidence number on each one.
 
-And for every answer, say how much of it rests on real measurements versus placeholders.
-
-What it is not: it is decision support. It narrows 288,000 square kilometres to a short, explainable list. It is not a final site selector and it is not a mission-certified hazard assessment — and we’ll be explicit about where it falls short.
-## 5. One grid. Every layer. One rule.
+And — important — this is decision support. It narrows the search for humans. It does not pick a landing site and it is not mission-certified. (BEAT) Please don’t land anything based on our hackathon project. Yet.
+## 5. Eight steps. Zero magic.
 
 [P1 · 1:05]
 
-Here is the whole system in eight steps.
+How does it work? Eight steps, zero magic. (CLICK through the steps)
 
-One — Grid. We cut 80 degrees south to the pole into 290,364 one-kilometre cells, in the same polar stereographic projection NASA uses for its LOLA maps, so NASA’s rasters drop straight in with no reprojection.
+One — Grid. We cut 80 degrees south to the pole into 290,364 one-kilometre cells. That’s about 288,000 square kilometres — bigger than the UK. (BEAT) Yes, we checked. And it’s in polar stereographic, the same projection NASA uses, so their maps drop straight in with no warping.
 
-Two — Ingest. We read the 40-metre LOLA elevation model in windows — 15,200 by 15,200 pixels, never loaded whole — and compute, for each cell, mean slope, maximum slope and roughness from 625 pixels. The illumination map gives each cell’s average sunlight and the fraction that is permanently shadowed. The whole DEM takes about 13 seconds.
+Two — Ingest. NASA’s LOLA laser altimeter fired billions of laser pulses at the Moon. Its 40-metre elevation map is 15,200 by 15,200 pixels — 231 million heights. We read it in windows, never all at once, and it takes 13 seconds. Every cell gets 625 of those pixels, which gives us its mean slope, max slope and roughness, plus sunlight and permanent shadow from the illumination map.
 
-Three — Features. Twelve per cell, each with a flag saying whether it is real data or a placeholder.
+Three — Features: twelve per cell, each flagged real or placeholder.
 
-Four — Rules. Hard limits first: mean slope above 10 degrees, too rough or too bouldery, and the cell can’t be a landing site, whatever else it scores.
+Four — Rules: slope over 10 degrees? Too rough? You don’t land there, no matter how pretty it is.
 
-Five — Scores. Landing and resource scores are weighted averages of normalised features; the weights are in one config file and live sliders in the app.
+Five — Scores: weighted averages, every weight a live slider.
 
-Six — Model. A neural network ensemble learns those scores so it can still rank cells when a layer is missing.
+Six — a Model that copes with missing data. Seven — Pairs within 10 km. Eight — Check against NASA. (BEAT) And 48 automated tests making sure we didn’t lie to ourselves.
+## 6. How much of this is actually real?
 
-Seven — Pairs: each good landing cell gets its best ice cell within 10 kilometres.
+[P1 · 0:55]
 
-Eight — Check: we test the ranking against NASA-published sites. 48 automated tests keep it honest.
-## 6. Real where we have it. Labelled where we don’t.
+So how much of this is actually real? (PAUSE) Great question. We asked it too.
 
-[P1 · 0:50]
+Five of our twelve features are real NASA LOLA data: mean slope, max slope, roughness, sunlight and permanent shadow. That’s 42 percent of all the values. (CLICK)
 
-Let me be precise about what is real.
+The other seven — ice radar, hydration, temperature, boulders, craters, Earth visibility — are synthetic placeholders for now. And every single one is labelled. The app tells you this at the top of the screen, every time. A map that pretends to know things it doesn’t is worse than no map.
 
-Five of our twelve features come from real NASA data: mean slope, maximum slope and roughness from the 40-metre LOLA elevation model, and average sunlight and permanent shadow from LOLA’s illumination maps. That is 42 percent of all feature values.
+Two fun stories. NASA’s server gives you about 15 kilobytes a second, so the download was estimated at 45 hours. (BEAT) We wrote a downloader that grabs eight chunks at once — done in an hour and fifteen. And the sunlight file stores numbers with a hidden scale factor; for a while we thought it was percentages. It wasn’t. Now there’s a test for it.
 
-The other seven — ice radar, hydration, temperature, boulders, craters, Earth visibility — are placeholders tonight, because the Chandrayaan-2 data needs ISSDC registration and the Diviner product is a 600-megabyte table we didn’t have time to grid properly.
-
-Placeholders are never presented as data. Every value carries a flag, the app shows a “partly synthetic” banner, and every score comes with a confidence: the share of its weight that rests on real measurements. A site scored mostly from placeholders says “Low confidence”, in words, on screen.
-
-One engineering note: NASA’s server throttles each connection to about 15 kilobytes a second. We wrote a parallel, resumable downloader that splits files into byte ranges — the 45-hour estimate came down to about an hour. Every file’s source URL is logged.
-## 7. Built to survive missing data
+Sanity check: our slopes put Shackleton’s floor at 3.6 degrees and its walls at about 30 — matching published values.
+## 7. No answer key? No problem. (Kind of.)
 
 [P2 · 0:45]
 
-Why a model at all, if we already have a scoring rule? Because the rule breaks when a layer is missing, and at the pole layers are always missing somewhere.
+Okay, here’s a subtle one. How do you train a model when there’s no answer key? (PAUSE) Nobody has a list saying “this cell is a 73 out of 100.”
 
-So we train a small neural network — two hidden layers — to reproduce the score, and during training we randomly hide 15 percent of the input layers on every pass, so it learns to rank a cell even when, say, temperature isn’t there.
+So we don’t pretend. Our model learns our scoring rule — and its real job is to keep ranking well when data goes missing, because real maps have gaps. (CLICK)
 
-We train three of them; where they disagree, the app shows a plus-or-minus spread. It is a simple signal, not calibrated uncertainty, and we label it that way.
+It’s a small neural network, three copies trained separately, so when they disagree you see a plus-or-minus spread. (CLICK) During training we randomly hide 15 percent of the inputs to make it tough. (CLICK) We test it on whole 10-kilometre blocks it has never seen, so it can’t just memorise neighbours. (CLICK) And we race it against Ridge regression, a plain linear baseline — because you should always check whether the fancy thing beats the simple thing.
 
-To test it fairly, we hold out whole 10-kilometre blocks of terrain, not random cells — neighbouring cells look alike, and random splits would flatter us.
-
-And it has to beat a plain linear Ridge regression to earn its place. Training takes 37 seconds on a laptop CPU.
-
-One honest caveat up front: there are no ground-truth labels for “good landing site”. The targets are our own rule. So the model’s accuracy means “reproduces the rule”, not “picks the right site”. You’ll see the app now, then the numbers.
+Training takes 37 seconds on a laptop CPU.
 ## 8. LIVE DEMO
 
 [P3 drives, P1 narrates · 2:15 · SWITCH TO THE BROWSER. Have the app open and loaded beforehand. Backup: screen recording.]
 
-1 · MAP (0:20) — “This is the whole south polar region, 80 degrees to the pole. Each pixel is the combined score; bright is better. The dark speckles are cells that fail the hard landing rules — steep crater walls. The numbered squares are the top ten sites, at least 5 kilometres apart.”
+“Enough slides. Let’s go to the Moon.” (SWITCH)
 
-2 · WEIGHTS (0:30) — Open Landing weights, drag slope_mean to 0. “Every weight is live. If a mission cares less about slope — say, a lander with better hazard avoidance — the ranking changes instantly. Nothing is hard-coded.” Click Reset weights.
+1 · MAP (0:25) — “This is the whole south pole, from above. The pole is right in the middle; the dotted rings are latitude, the spokes are longitude — same projection as NASA’s own maps. Bright yellow is good, dark purple is bad. Those black speckles? Crater walls our safety rules threw out — and honestly, they trace the craters beautifully.” Hover a pixel: “Every pixel tells you its latitude, longitude and all three scores.”
 
-3 · SITE CARD (0:30) — Pick site #1. “For any site: landing, resource and combined scores; the model’s prediction with its plus-or-minus spread; and confidence — here Medium, because half of the weight rests on real data. This bar chart shows exactly which feature contributed what. The table says, line by line, which values are real NASA data and which are synthetic.”
+2 · WEIGHTS (0:30) — Open Feature weights, drag slope_mean to 0. “What if your lander doesn’t care about slope? (BEAT) Brave. But watch — the whole map re-ranks instantly. Nothing is pre-baked.” Click Reset weights.
 
-4 · NASA SITES (0:20) — Hover the Shackleton diamond. “These diamonds are NASA-published reference points: Shackleton rim and Malapert massif, with our rank for each. We’ll come back to why they rank where they do.”
+3 · SITE CARD (0:30) — Pick site #1. “Our current number one: landing 92, resource 80. The model says 85 plus-or-minus 5. Confidence: Medium — half the weight rests on real data. And this bar chart shows exactly why it scores what it scores.”
 
-5 · PAIRS (0:20) — Scroll to pairs. “For each top landing cell, the best resource cell within 10 kilometres: distance, a simple route cost, and a combined score.”
+4 · NASA SITES (0:20) — Hover the Shackleton diamond. “These lilac diamonds are NASA’s own candidate sites — with our rank for each. Spoiler: it’s not great. We’ll explain.”
 
-6 · MODEL (0:15) — Open About the model. “And the model’s numbers, with the caveat printed right there: R-squared is not landing accuracy.”
+5 · PAIRS (0:20) — Scroll down. “Land here, drive there for ice: best ice cell within 10 km of each landing site.”
+
+6 · MODEL (0:10) — Open About the model. “And the model’s scores, caveat printed right next to them.”
 
 SWITCH BACK TO SLIDES.
-## 9. What the numbers say
+## 9. Did the fancy model win?
 
 [P2 · 0:40]
 
-The numbers, from whole 10-kilometre blocks the models never saw.
+So — did the fancy neural network win? (PAUSE) (BEAT) Half of it did.
 
-Landing: the simple Ridge baseline wins — 0.994 against the neural network’s 0.969, and it stays ahead when we hide 15 percent of the inputs. That makes sense: our landing rule is close to linear in slope and sunlight, so a linear model fits it almost perfectly. We report that rather than hide it.
+For landing, Ridge — the simple linear baseline — wins: 0.994 versus 0.969. Which makes sense, because our landing rule is basically linear. Ouch, but fair.
 
-Resource: the neural network wins — 0.987 against 0.965, and with inputs hidden 0.558 against 0.425. The resource score mixes ice, cold and shadow in a less linear way, and that is where the masking training pays off. The drop with hidden inputs also tells you how much the resource score depends on layers that are still placeholders.
+For resource, the neural network wins: 0.987 versus 0.965, and with 15 percent of inputs hidden it holds 0.558 against Ridge’s 0.425 — exactly the missing-data case we built it for.
 
-And one physical result: with real LOLA slopes, 62 percent of cells pass the landing rules. With placeholder slopes, 100 percent passed — which is exactly why real data mattered.
-
-Again: R-squared here measures how faithfully a model reproduces our rule. It does not measure landing safety.
+And because we like saying the uncomfortable part out loud: R-squared here means “how well it copies our rule,” not “how good it is at picking landing sites.” The app prints that caveat right next to the numbers.
 ## 10. We checked against NASA. We missed.
 
 [P2 · 0:50]
 
-We validated in two ways.
+So did we match NASA’s chosen sites? (PAUSE) No. (BEAT) And we think that’s the most useful slide in this deck.
 
-First, physical sanity. Shackleton crater’s floor comes out at zero percent sunlight, 100 percent permanent shadow and 3.6 degrees slope — a flat, dark cold trap, as it should be. Its inner walls come out at 30 degrees, matching their known 30-to-35-degree slopes. Malapert massif comes out at 7 degrees and 36 percent sunlight. The data pipeline is right.
+First, the sanity checks pass: Shackleton’s floor comes out zero percent sunlit, fully shadowed, 3.6 degrees — just like the literature. (CLICK)
 
-Second, the hard test: two reference points from NASA’s Lunar Surface Data Book, Shackleton rim and Malapert massif. Both missed our top ten.
+Shackleton rim, NASA site R04: we rank it 281,536th. Why? NASA’s point sits on a narrow rim — but our one-kilometre cell around it also swallows the 30-degree crater wall. So the cell fails our slope rule. The rim is fine; our cell is too chunky to see just the rim. (CLICK)
 
-Shackleton rim ranks 281,536th. The reason is resolution: the rim is a narrow crest, and the nearest one-kilometre cell is mostly the 30-degree crater wall beside it, so it fails the slope rule. At 1 kilometre, we cannot separate a ridge-top from the cliff next to it.
+Malapert, R23: rank 98,656. It passes every safety rule; it just doesn’t make the top ten on our current weights.
 
-Malapert ranks 98,656th: it passes every rule, but under our weights it is good, not exceptional. NASA weighs things we don’t model — communications, traverses, science.
-
-We are reporting these misses, not tuning the weights until NASA’s sites float to the top. That would be fitting the answer.
-## 11. What this is not (yet)
+We could have quietly tuned the weights until NASA’s sites floated to the top. We didn’t. A tool that tells you why it disagrees with NASA is more trustworthy than one that only shows nice numbers. (BEAT) Reported, not tuned away.
+## 11. Things we won’t pretend about
 
 [P1 · 1:00]
 
-Six drawbacks, in order of how much they matter.
+So, the things we are not going to pretend about. (CLICK through)
 
-One: labels. Nobody has labelled the Moon’s good landing sites, so our model learns our own scoring rule. It can be no better than the rule and the weights we chose.
+Labels: there’s no ground truth, so the model learns our rule. It’s a rule-imitator, not an oracle.
 
-Two: coverage. Seven of twelve layers are placeholders tonight, including the ones that matter most for resources — ice radar and temperature. The resource map is the least trustworthy part of the product, and the confidence score says so.
+Coverage: seven of twelve layers are still placeholders — including the ice radar, which is, slightly awkwardly, the most important one for finding ice. (BEAT)
 
-Three: resolution. One-kilometre cells average a narrow crater rim with the cliff beside it — that is exactly why Shackleton rim failed.
+Resolution: one-kilometre cells blur narrow crater rims — that’s the Shackleton miss you just saw.
 
-Four: hazards. A 40-metre elevation model cannot see boulders or small craters that can tip a lander; that needs Chandrayaan-2’s 25-centimetre OHRC camera.
+Hazards: a 40-metre elevation map cannot see a boulder the size of a car. Your lander can.
 
-Five: routes. Our route cost is straight-line distance times average slope. It does not plan a path around a cliff.
+Routes: our route cost is distance times slope, not a real path planner that drives around craters.
 
-Six: uncertainty. The plus-or-minus is the spread of three models. It is a useful flag, but it is not a calibrated probability.
+Uncertainty: the plus-or-minus is the ensemble disagreeing with itself, not a calibrated error bar.
 
-None of these is hidden in the product: each one is printed in the app, the README or the validation report.
-## 12. Where it goes next
+Every single one of these is written in our README and our validation report — and every one has a fix on the next slide.
+## 12. What happens with more than one night?
 
 [P2 · 0:50]
 
-The roadmap follows the drawbacks, and the architecture already has a slot for each step.
+So what happens with more than one night? (PAUSE)
 
-Next, in weeks: real resource data. Chandrayaan-2’s dual-frequency radar for ice signatures and its IIRS spectrometer for hydration, through ISRO’s PRADAN portal, plus Diviner temperatures. Each one replaces a placeholder layer; nothing else changes, and confidence rises automatically.
+In weeks: real resource data. Chandrayaan-2’s DFSAR radar for ice, its IIRS spectrometer for hydration — both through ISRO’s PRADAN portal — plus Diviner temperatures. Each one replaces a placeholder; nothing else changes, and confidence goes up on its own. (CLICK)
 
-Then, in months: sharper ground. The 20-metre DEM and finer 250-metre cells along crater rims would fix the Shackleton miss. Chandrayaan-2’s OHRC camera, at 25 centimetres, would let us map boulders directly. And a real path planner — a least-cost route over the slope map — would replace our straight-line route cost.
+In months: sharper ground. The 20-metre elevation map and 250-metre cells along crater rims — that fixes the Shackleton miss. Chandrayaan-2’s OHRC camera at 25 centimetres a pixel — you can literally see individual rocks — for boulder maps. And a real slope-aware path planner. (CLICK)
 
-Later: real labels. If mission experts rate a set of sites, the model can learn from them instead of from our rule — that is when it stops being a rule imitator and becomes a genuine predictor. Add calibrated uncertainty and Earth-communication windows, and it becomes a tool a mission team could actually plan with.
+Later: real labels. If mission experts rate a set of sites, the model finally learns from humans instead of from our rule — and stops being an imitator.
 
-The key design point: every upgrade is a data swap in one config file, not a rewrite.
+The design point we’re proudest of: every upgrade is a data swap in one config file. (BEAT) Not a rewrite.
 ## 13. Decision support, not decisions.
 
-[P3 · 0:30 · total ≈ 11:20]
+[P3 · 0:30 · total ≈ 11:35]
 
-To close. In one night we turned scattered NASA archives into one map of the lunar south pole: 290,364 cells, real LOLA terrain and sunlight, hard safety rules, transparent scores, a model built to survive missing data, and landing-to-ice pairs — every number traceable to its source and every gap labelled.
+So — where should you park that billion-dollar lander? (PAUSE)
 
-It narrows 288,000 square kilometres to a short list that explains itself: why each site ranks where it does, and how much of that rests on real data.
+We can’t tell you exactly. (BEAT) But we can turn 288,000 square kilometres into a short list that explains itself: why each site ranks where it does, how much of that is real data, and — when it disagrees with NASA — why.
 
-And when it disagrees with NASA, it says so, and says why.
+In one night: real LOLA terrain and sunlight, hard safety rules, transparent scores, a model built for missing data, and landing-to-ice pairs. Every number traceable, every gap labelled.
 
-Decision support, not decisions. The app is live at the link on screen, the code and the validation report are on GitHub. Thank you — we’re happy to take questions.
+Decision support, not decisions. The app is live at the link on screen, the code and the validation report are on GitHub. Thank you — questions?
 
 [Likely questions, one line each: Why 1 km? — balance of DEM resolution, compute and the 10 km pairing; rims need finer, it’s on the roadmap. Why not deep learning on images? — no labels; a transparent rule plus a model that survives gaps was the honest choice. How do you know slopes are right? — Shackleton floor 3.6°, walls 30°, matching published values. What would change your top 10 most? — real ice radar from Chandrayaan-2 DFSAR.]
