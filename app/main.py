@@ -3,9 +3,13 @@
 Run:  streamlit run app/main.py      (or `make run`)
 
 Reads (all local, no network):
-  data/processed/features.parquet  - shared contract in config.yaml
-  data/processed/scores.parquet    - P1 (optional; used only to cross-check)
-  data/processed/pairs.parquet     - P2 (landing cell <-> nearby ice cell)
+  data/processed/features.parquet  - P1, shared contract in config.yaml
+  results/*                        - P2's committed outputs (predictions, pairs,
+                                     validation, metrics), via app/results_io.py
+  data/processed/pairs.parquet     - fallback if results/pairs.parquet is absent
+
+Scores are computed live with P1's src/scoring.py and src/constraints.py (the one
+scoring definition), so the weight sliders re-rank instantly.
 
 If features.parquet is missing the app falls back to an in-memory SYNTHETIC
 dataset so the UI can always be demoed. The banner says which mode is active.
@@ -27,7 +31,13 @@ CFG_PATH = ROOT / "config.yaml"
 if str(ROOT) not in sys.path:          # `streamlit run app/main.py` only puts app/ on the path
     sys.path.insert(0, str(ROOT))
 
+if str(ROOT / "app") not in sys.path:
+    sys.path.insert(0, str(ROOT / "app"))
+
+import results_io  # noqa: E402  (reads P2's results/)
+from src.constraints import landing_mask  # noqa: E402
 from src.grid import build_grid  # noqa: E402  (shared 1 km grid, same cell_ids as the pipeline)
+from src.scoring import normalise as _normalise, weighted as _weighted  # noqa: E402
 
 # `width="stretch"` on new Streamlit, `use_container_width=True` on older pins.
 _STRETCH = ({"width": "stretch"} if "width" in inspect.signature(st.dataframe).parameters
@@ -102,9 +112,17 @@ def load_features() -> tuple[pd.DataFrame, bool]:
 
 
 @st.cache_data(show_spinner=False)
-def load_pairs() -> pd.DataFrame | None:
+def load_results() -> dict:
+    """P2's committed results/ (each entry None if missing; never raises)."""
+    return results_io.load_results(ROOT / "results")
+
+
+def load_pairs(res: dict) -> tuple[pd.DataFrame | None, str]:
+    """results/pairs.parquet first, then data/processed/pairs.parquet."""
+    if res["pairs"] is not None:
+        return res["pairs"], "results/pairs.parquet"
     p = ROOT / load_config()["paths"]["processed"] / "pairs.parquet"
-    return pd.read_parquet(p) if p.exists() else None
+    return (pd.read_parquet(p), "data/processed/pairs.parquet") if p.exists() else (None, "")
 
 
 @st.cache_data(show_spinner=False)
@@ -132,45 +150,16 @@ def _demo_pairs(feats: pd.DataFrame, cfg: dict) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def normalised(feats: pd.DataFrame) -> pd.DataFrame:
-    """0-1 per feature (2nd-98th percentile clip), flipped so 1 is always 'better'.
-    Independent of the weights, so it is cached and sliders stay instant."""
-    cfg = load_config()["scoring"]
-    out = {}
-    for grp in cfg.values():
-        for f, spec in grp.items():
-            if f not in feats:
-                continue
-            v = feats[f].to_numpy("float64")
-            if np.isfinite(v).sum() == 0:
-                out[f] = np.full(len(v), np.nan); continue
-            lo, hi = np.nanpercentile(v, [2, 98])
-            n = np.clip((v - lo) / (hi - lo), 0, 1) if hi > lo else np.full(len(v), .5)
-            out[f] = 1 - n if spec["direction"] == "lower" else n
-    return pd.DataFrame(out, index=feats.index)
+    """0-1 goodness per feature from src/scoring.py. Weight-independent, so cached."""
+    return _normalise(feats, load_config())
 
 
-def weighted_score(norm: pd.DataFrame, weights: dict[str, float]) -> np.ndarray:
-    """Weights renormalised over the features a cell actually has (config.yaml rule).
-    >>> SWAP POINT: to use P1's scoring.py instead, replace the body of this
-    function with a call to it - the rest of the app only needs a 0-100 array.
-    """
-    num = np.zeros(len(norm)); den = np.zeros(len(norm))
-    for f, w in weights.items():
-        if f not in norm or w <= 0:
-            continue
-        v = norm[f].to_numpy(); ok = ~np.isnan(v)
-        num += np.where(ok, v, 0) * w; den += np.where(ok, w, 0)
-    with np.errstate(invalid="ignore", divide="ignore"):
-        return np.where(den > 0, 100 * num / den, np.nan)
-
-
-def passes_constraints(feats: pd.DataFrame, cons: dict) -> np.ndarray:
-    ok = np.ones(len(feats), bool)
-    for col, lim in (("slope_mean", cons["slope_mean_max_deg"]), ("roughness", cons["roughness_max_deg"]),
-                     ("boulder_density", cons["boulder_density_max"])):
-        if col in feats:
-            ok &= ~(feats[col].to_numpy("float64") > lim)  # NaN never removes a cell
-    return ok
+def weighted_score(norm: pd.DataFrame, weights: dict[str, float],
+                   feats: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    """(score 0-100, confidence 0-1) from src/scoring.py: weights renormalised over the
+    features a cell has; confidence = share of weight backed by real data."""
+    score, conf = _weighted(norm, weights, feats)
+    return 100 * score, conf
 
 
 def pick_top(df: pd.DataFrame, col: str, n: int, min_sep_m: float) -> pd.DataFrame:
@@ -186,7 +175,8 @@ def pick_top(df: pd.DataFrame, col: str, n: int, min_sep_m: float) -> pd.DataFra
 
 
 
-def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id, label: str) -> go.Figure:
+def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id, label: str,
+            val_pts: pd.DataFrame | None = None) -> go.Figure:
     f = max(1, round(5000 / cell_m))  # ~5 km bins for speed
     r = ((df.y - df.y.min()) // cell_m).astype(int) // f
     c = ((df.x - df.x.min()) // cell_m).astype(int) // f
@@ -204,6 +194,13 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
             textposition="top center", textfont=dict(color="white", size=11),
             marker=dict(size=9, color="red", line=dict(color="white", width=1.5)),
             customdata=top.cell_id, hovertemplate="#%{text}  cell %{customdata}<extra></extra>", showlegend=False))
+    if val_pts is not None and len(val_pts):
+        fig.add_trace(go.Scatter(
+            x=val_pts.x / 1000, y=val_pts.y / 1000, mode="markers+text", text=val_pts.name,
+            textposition="bottom center", textfont=dict(color="orange", size=10),
+            marker=dict(size=12, symbol="diamond", color="orange", line=dict(color="black", width=1)),
+            hovertext=val_pts.hover, hovertemplate="%{hovertext}<extra>NASA reference site</extra>",
+            showlegend=False))
     if sel_id is not None and (df.cell_id == sel_id).any():
         s = df[df.cell_id == sel_id].iloc[0]
         fig.add_trace(go.Scatter(x=[s.x / 1000], y=[s.y / 1000], mode="markers", showlegend=False,
@@ -213,11 +210,8 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
     return fig
 
 
-def confidence(feats_row: pd.Series, weights: dict[str, float]) -> tuple[float, str]:
-    tot = sum(weights.values()) or 1
-    real = sum(w for f, w in weights.items() if bool(feats_row.get(f + "_cov", False)) and pd.notna(feats_row.get(f)))
-    p = real / tot
-    return p, ("High" if p >= .75 else "Medium" if p >= .4 else "Low")
+def confidence_label(p: float) -> str:
+    return "High" if p >= .75 else "Medium" if p >= .4 else "Low"
 
 
 # --------------------------------------------------------------------------- app
@@ -236,6 +230,13 @@ def main() -> None:
     elif real_pct < 100:
         st.warning(f"PARTLY SYNTHETIC - {real_pct:.0f}% of feature values are real; the rest are synthetic placeholders. "
                    "Per-site confidence shows how much of each score rests on real data.")
+    res = load_results()
+    if res["version"] is None:
+        st.info("Model results (results/) not found yet: scores below are the live weighted rule only.")
+    elif results_io.version_is_synthetic(res["version"]):
+        st.warning(f"Model results in results/ were trained on SYNTHETIC features ({res['version']}).")
+    for w in res["warnings"]:
+        st.warning(w)
     st.caption("Decision support, not a final site selector. 80S-90S on a 1 km grid.")
 
     # ---- sidebar: controls
@@ -260,9 +261,9 @@ def main() -> None:
     # ---- live scoring (vectorised; instant)
     norm = normalised(feats)
     df = feats[["cell_id", "x", "y", "lat", "lon"]].copy()
-    df["landing"] = weighted_score(norm, weights["landing"])
-    df["resource"] = weighted_score(norm, weights["resource"])
-    df["eligible"] = passes_constraints(feats, cfg["constraints"])
+    df["landing"], df["landing_conf"] = weighted_score(norm, weights["landing"], feats)
+    df["resource"], df["resource_conf"] = weighted_score(norm, weights["resource"], feats)
+    df["eligible"] = landing_mask(feats, cfg).to_numpy()
     if hide:
         df.loc[~df.eligible, "landing"] = np.nan
     df["combined"] = (1 - mix) * df.landing + mix * df.resource  # NaN if either is NaN
@@ -273,9 +274,12 @@ def main() -> None:
     with left:
         # Read the picker's own key: it already holds this run's choice, so the ring
         # never lags one click behind (sel_key is only set further down the script).
-        st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name),
+        val_pts = results_io.validation_points(res["validation"], feats, cfg["moon"]["radius_m"],
+                                               cfg["grid"]["lat_limit_deg"])
+        st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
                         **_STRETCH)
-        st.caption("Red markers = top-N sites (min 5 km apart). Cyan ring = site selected on the right. Map binned to ~5 km.")
+        st.caption("Red markers = top-N sites (min 5 km apart). Orange diamonds = NASA reference sites "
+                   "(rank from results/validation.csv). Cyan ring = selected site. Map binned to ~5 km.")
 
     with right:
         st.subheader(f"Top {len(top)} - {view_name}")
@@ -291,22 +295,35 @@ def main() -> None:
             labels = {cid: f"#{i + 1}  cell {cid}" for i, cid in enumerate(ids)}
             cid = st.selectbox("Site", ids, format_func=labels.get, key="site_pick")
             st.session_state[sel_key] = cid
-            site_card(feats, df, norm, cid, weights, cfg)
+            site_card(feats, df, norm, cid, weights, cfg, res)
 
     st.divider()
     st.subheader("Landing / ice pairs")
-    pairs_table(df, top, cfg, feats)
+    pairs_table(df, top, cfg, feats, res)
+    model_panel(res)
 
 
-def site_card(feats, df, norm, cid, weights, cfg) -> None:
+def site_card(feats, df, norm, cid, weights, cfg, res) -> None:
     i = feats.index[feats.cell_id == cid][0]
     row, srow = feats.loc[i], df.loc[i]
     m = st.columns(3)
     m[0].metric("Landing", "-" if pd.isna(srow.landing) else f"{srow.landing:.0f}")
     m[1].metric("Resource", "-" if pd.isna(srow.resource) else f"{srow.resource:.0f}")
     m[2].metric("Combined", "-" if pd.isna(srow.combined) else f"{srow.combined:.0f}")
-    allw = {**weights["landing"], **weights["resource"]}
-    p, lab = confidence(row, allw)
+    p = float((srow.landing_conf + srow.resource_conf) / 2)
+    lab = confidence_label(p)
+    pred = res["predictions"]
+    if pred is not None:
+        hit = pred[pred.cell_id == cid]
+        if len(hit):
+            h = hit.iloc[0]
+            def _pm(score, unc):
+                return "-" if pd.isna(score) else f"{100 * score:.0f} ± {100 * (0 if pd.isna(unc) else unc):.0f}"
+            mm = st.columns(2)
+            mm[0].metric("Model landing (MLP)", _pm(h.get("landing_score"), h.get("landing_uncertainty")))
+            mm[1].metric("Model resource (MLP)", _pm(h.get("resource_score"), h.get("resource_uncertainty")))
+            st.caption("Model = P2's MLP ensemble trained to imitate the weighted rule; ± is ensemble spread "
+                       f"(uncalibrated). Features version: {res['version'] or 'unknown'}.")
     st.markdown(f"**Confidence: {lab}** - {p * 100:.0f}% of the weighting rests on real (non-synthetic) data. "
                 f"Lat {row.lat:.2f}, Lon {row.lon:.1f}. "
                 + ("Passes hard landing constraints." if srow.eligible else "**Fails a hard landing constraint.**"))
@@ -336,8 +353,8 @@ def site_card(feats, df, norm, cid, weights, cfg) -> None:
     st.dataframe(show, **_STRETCH, hide_index=True)
 
 
-def pairs_table(df, top, cfg, feats) -> None:
-    pairs = load_pairs()
+def pairs_table(df, top, cfg, feats, res) -> None:
+    pairs, src = load_pairs(res)
     if pairs is None:
         st.warning("SYNTHETIC placeholder pairs: pairs.parquet (P2) not found yet. "
                    "These landing cells and distances are random, not computed.")
@@ -351,11 +368,33 @@ def pairs_table(df, top, cfg, feats) -> None:
             pairs = pairs[pairs[lid].isin(top.cell_id)]
         pairs = pairs.merge(df[["cell_id", "landing"]].rename(columns={"cell_id": lid, "landing": "landing_score_live"}),
                             on=lid, how="left")
-    if dcol:
+    if "combined_score" in pairs:
+        pairs = pairs.sort_values("combined_score", ascending=False)
+    elif dcol:
         pairs = pairs.sort_values(dcol)
     st.dataframe(pairs.round(3), **_STRETCH, hide_index=True, height=320)
     st.caption(f"{len(pairs):,} pairs, pairing radius {cfg['pairing']['radius_km']} km. "
-               "Pairs come from P2's pairs.parquet; landing_score_live updates with the sliders.")
+               f"Source: {src or 'SYNTHETIC placeholder'}. landing_score_live (0-100) updates with the sliders; "
+               "route_cost = distance x mean slope, a heuristic, not a path plan.")
+
+
+def model_panel(res) -> None:
+    """P2's metrics.json: MLP vs Ridge baseline on held-out spatial blocks."""
+    m = res["metrics"]
+    with st.expander("About the model", expanded=False):
+        if not isinstance(m, dict):
+            st.write("results/metrics.json not found yet (P2 commits it after training).")
+            return
+        items = results_io.r2_items(m, limit=8)
+        if items:
+            cols = st.columns(min(4, len(items)))
+            for i, (k, v) in enumerate(items):
+                label = k.removeprefix("metrics.").replace("_score/", " ").replace("_with_masked_inputs", " (masked)")
+                cols[i % len(cols)].metric(f"R² {label}", f"{v:.3f}")
+        st.caption("R² = how well the model reproduces the weighted scoring rule on held-out 10 km blocks. "
+                   "It is not landing accuracy: there are no ground-truth labels for 'good' sites. "
+                   f"Features version: {res['version'] or 'unknown'}.")
+        st.dataframe(results_io.flatten_metrics(m), **_STRETCH, hide_index=True)
 
 
 if __name__ == "__main__":
