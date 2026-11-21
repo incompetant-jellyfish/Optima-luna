@@ -1,0 +1,66 @@
+# Lunar South Pole Site Suitability Ranker — shared configuration.
+# Every threshold and weight lives here, never hard-coded. Change it here only.
+
+moon:
+  radius_m: 1737400          # IAU mean radius; same sphere the LOLA polar products use
+
+grid:
+  # South polar stereographic, centred on the pole. Matches NASA PGDA LOLA polar DEMs,
+  # so LOLA rasters need no reprojection, only resampling.
+  crs: "+proj=stere +lat_0=-90 +lon_0=0 +k=1 +x_0=0 +y_0=0 +R=1737400 +units=m +no_defs"
+  cell_size_m: 1000
+  lat_limit_deg: -80         # keep cells whose centre is at or south of this latitude
+
+# ---- Shared data contract (agreed by P1/P2/P3) ---------------------------------
+# data/processed/features.parquet columns:
+#   cell_id, row, col, x, y, lat, lon, <feature> ..., <feature>_cov ...
+# <feature>_cov is True where that cell has real (non-synthetic, non-missing) data.
+# A feature value of NaN means "no data at all" for that cell.
+features:
+  slope_mean:      {unit: deg,       desc: "Mean slope within the cell (from LOLA DEM)"}
+  slope_max:       {unit: deg,       desc: "Max slope within the cell (from LOLA DEM)"}
+  roughness:       {unit: deg,       desc: "Std. dev. of slope within the cell"}
+  boulder_density: {unit: per_km2,   desc: "Boulders per km² (OHRC; not used in v1)"}
+  crater_density:  {unit: per_km2,   desc: "Small craters per km²"}
+  illum_frac:      {unit: fraction,  desc: "Fraction of time sunlit (LOLA illumination)"}
+  psr_frac:        {unit: fraction,  desc: "Fraction of cell permanently shadowed"}
+  temp_mean:       {unit: K,         desc: "Annual mean surface temperature (Diviner PRP)"}
+  temp_max:        {unit: K,         desc: "Annual max surface temperature (Diviner PRP)"}
+  ice_cpr:         {unit: ratio,     desc: "DFSAR circular polarisation ratio (ice indicator)"}
+  hydration_depth: {unit: fraction,  desc: "IIRS ~3 µm hydration band depth"}
+  earth_los_frac:  {unit: fraction,  desc: "Fraction of time Earth is in view (from DEM)"}
+
+# ---- Phase 3: hard landing constraints ------------------------------------------
+# A cell is removed if any available value breaks a limit. Missing values never remove a cell.
+constraints:
+  slope_mean_max_deg: 10
+  roughness_max_deg: 8         # TODO: calibrate once real LOLA roughness is computed
+  boulder_density_max: 50      # TODO: calibrate; OHRC not used in v1, so usually NaN
+
+# ---- Phase 3: scoring --------------------------------------------------------------
+# direction: higher = more is better, lower = less is better.
+# Weights are renormalised over the features a cell actually has (see scoring.py).
+scoring:
+  landing:
+    slope_mean:      {weight: 0.35, direction: lower}
+    roughness:       {weight: 0.20, direction: lower}
+    boulder_density: {weight: 0.10, direction: lower}
+    illum_frac:      {weight: 0.25, direction: higher}
+    earth_los_frac:  {weight: 0.10, direction: higher}
+  resource:
+    ice_cpr:         {weight: 0.30, direction: higher}
+    hydration_depth: {weight: 0.15, direction: higher}
+    psr_frac:        {weight: 0.20, direction: higher}
+    temp_max:        {weight: 0.25, direction: lower}    # cold traps: low annual max temp
+    crater_density:  {weight: 0.10, direction: higher}   # proxy for terrain/science variety
+
+# ---- Phase 6: pairing ----------------------------------------------------------------
+pairing:
+  radius_km: 10
+  top_n: 10
+
+# ---- Paths ---------------------------------------------------------------------------
+paths:
+  raw: data/raw
+  processed: data/processed
+  models: models
