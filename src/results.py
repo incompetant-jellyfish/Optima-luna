@@ -9,6 +9,7 @@ results/predictions.parquet  cell_id, landing_score, resource_score, landing_unc
 results/pairs.parquet        pairing output (unchanged)
 results/metrics.json         models/metrics.json incl. features_version, train_seconds
 results/validation.csv       already written there by src/validate.py
+results/features.parquet     slim copy of the features table, for the deployed app
 """
 
 import json
@@ -47,6 +48,14 @@ def export_results(cfg: dict | None = None) -> list[str]:
     pred.to_parquet(out / "predictions.parquet", index=False)
 
     shutil.copyfile(processed / "pairs.parquet", out / "pairs.parquet")
+
+    # Slim features copy so a deployed app (no data/ folder) still shows real layers.
+    feats = pd.read_parquet(processed / "features.parquet")
+    keep = [c for c in feats.columns if c not in ("row", "col", "true_area_km2")]
+    feats = feats[keep]
+    for c in feats.select_dtypes("float64").columns:
+        feats[c] = feats[c].astype("float32")
+    feats.to_parquet(out / "features.parquet", index=False, compression="zstd")
     metrics["features_version"] = version
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     if not (out / "validation.csv").exists():

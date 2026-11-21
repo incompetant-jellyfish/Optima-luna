@@ -34,13 +34,13 @@
       "train_spatial_blocks": 1924,
       "validation_spatial_blocks": 482,
       "test_spatial_blocks": 602,
-      "validation_r2": 0.958643354634371,
-      "test_r2": 0.9560029050475252,
-      "validation_r2_with_masked_inputs": 0.9398987663892959,
-      "test_r2_with_masked_inputs": 0.9378124450124004,
-      "test_mae": 0.017937544501464387,
+      "validation_r2": 0.9939328625879645,
+      "test_r2": 0.9936044253826302,
+      "validation_r2_with_masked_inputs": 0.9744468408187893,
+      "test_r2_with_masked_inputs": 0.9747044258609697,
+      "test_mae": 0.005608647918605201,
       "member_test_r2": [
-        0.9560029050475252
+        0.9936044253826302
       ],
       "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
     },
@@ -56,15 +56,15 @@
       "train_spatial_blocks": 1917,
       "validation_spatial_blocks": 482,
       "test_spatial_blocks": 602,
-      "validation_r2": 0.9615147952278496,
-      "test_r2": 0.9619279009005242,
-      "validation_r2_with_masked_inputs": 0.9501122738585921,
-      "test_r2_with_masked_inputs": 0.9144058408489697,
-      "test_mae": 0.020718912668930698,
+      "validation_r2": 0.9731441031373952,
+      "test_r2": 0.9686884898147882,
+      "validation_r2_with_masked_inputs": 0.9647950792070376,
+      "test_r2_with_masked_inputs": 0.9040301594578842,
+      "test_mae": 0.020031351196267644,
       "member_test_r2": [
-        0.7383354493440146,
-        0.9516245315966396,
-        0.9952489304350368
+        0.788579460007917,
+        0.9599062009023224,
+        0.9975031340482892
       ],
       "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
     },
@@ -80,13 +80,13 @@
       "train_spatial_blocks": 1924,
       "validation_spatial_blocks": 482,
       "test_spatial_blocks": 602,
-      "validation_r2": 0.9671287920365459,
-      "test_r2": 0.9662711567175969,
-      "validation_r2_with_masked_inputs": 0.9481866096953012,
-      "test_r2_with_masked_inputs": 0.4290782600979697,
-      "test_mae": 0.015199004938635517,
+      "validation_r2": 0.966279033411761,
+      "test_r2": 0.9651380182481962,
+      "validation_r2_with_masked_inputs": 0.9471987749240168,
+      "test_r2_with_masked_inputs": 0.42534519415719074,
+      "test_mae": 0.015135378810879271,
       "member_test_r2": [
-        0.9662711567175969
+        0.9651380182481962
       ],
       "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
     },
@@ -102,19 +102,19 @@
       "train_spatial_blocks": 1917,
       "validation_spatial_blocks": 482,
       "test_spatial_blocks": 602,
-      "validation_r2": 0.9864853125919174,
-      "test_r2": 0.9871545875558828,
-      "validation_r2_with_masked_inputs": 0.972370175111032,
-      "test_r2_with_masked_inputs": 0.5093875770351958,
-      "test_mae": 0.011623227650048236,
+      "validation_r2": 0.9867643423483211,
+      "test_r2": 0.9873969999372662,
+      "validation_r2_with_masked_inputs": 0.9720498383212586,
+      "test_r2_with_masked_inputs": 0.5579355903680785,
+      "test_mae": 0.011554848311910882,
       "member_test_r2": [
-        0.9956417042055564,
-        0.99562073563364,
-        0.9094500771822163
+        0.9970309115233078,
+        0.995000099650188,
+        0.9078728492294613
       ],
       "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
     }
   },
   "features_version": "v1-lola",
-  "train_seconds": 41.2
+  "train_seconds": 37.1
 }

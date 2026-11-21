@@ -105,9 +105,11 @@ def _synthetic_features(cfg: dict, seed: int = 7) -> pd.DataFrame:
 @st.cache_data(show_spinner="Loading data...")
 def load_features() -> tuple[pd.DataFrame, bool]:
     cfg = load_config()
-    p = ROOT / cfg["paths"]["processed"] / "features.parquet"
-    if p.exists():
-        return pd.read_parquet(p), False
+    # Local pipeline output first; results/features.parquet is the committed copy used
+    # when the app is deployed without the git-ignored data/ folder.
+    for p in (ROOT / cfg["paths"]["processed"] / "features.parquet", ROOT / "results" / "features.parquet"):
+        if p.exists():
+            return pd.read_parquet(p), False
     return _synthetic_features(cfg), True
 
 

@@ -8,6 +8,9 @@ from scipy.spatial import cKDTree
 from src.config import ROOT, load_config
 
 
+MAX_LANDING_CANDIDATES = 5000  # landing cells considered, best landing score first
+
+
 def _haversine_km(lat1, lon1, lat2, lon2, radius_km=1737.4):
     """Great-circle distance on the configured lunar sphere."""
     a1, a2 = np.radians(lat1), np.radians(lat2)
@@ -58,6 +61,10 @@ def rank_pairs(
     valid_resource = frame[resource_score].notna() & frame[["x", "y"]].notna().all(axis=1)
     land = frame.loc[valid_landing].copy()
     land = land.sort_values(landing_score, ascending=False).reset_index(drop=True)
+    # Only the best landing cells can make the top pairs. The early-stop bound below
+    # assumes zero route cost, so with real slopes it rarely fires; cap the candidates
+    # so pairing stays a few seconds on the full grid.
+    land = land.head(max(MAX_LANDING_CANDIDATES, 50 * limit))
     resource = frame.loc[valid_resource].copy()
     if land.empty or resource.empty:
         return pd.DataFrame(columns=["landing_cell_id", "ice_cell_id", "distance_km", "route_cost", "landing_score", "resource_score", "confidence", "combined_score"])
