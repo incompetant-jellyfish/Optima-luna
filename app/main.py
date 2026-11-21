@@ -12,6 +12,8 @@ dataset so the UI can always be demoed. The banner says which mode is active.
 """
 from __future__ import annotations
 
+import inspect
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -20,21 +22,26 @@ import plotly.graph_objects as go
 import streamlit as st
 import yaml
 
+ROOT = Path(__file__).resolve().parent.parent
+CFG_PATH = ROOT / "config.yaml"
+if str(ROOT) not in sys.path:          # `streamlit run app/main.py` only puts app/ on the path
+    sys.path.insert(0, str(ROOT))
+
+from src.grid import build_grid  # noqa: E402  (shared 1 km grid, same cell_ids as the pipeline)
+
 # `width="stretch"` on new Streamlit, `use_container_width=True` on older pins.
-import inspect
 _STRETCH = ({"width": "stretch"} if "width" in inspect.signature(st.dataframe).parameters
             else {"use_container_width": True})
 
-ROOT = Path(__file__).resolve().parent.parent
-CFG_PATH = ROOT / "config.yaml"
-
-
+# Where each layer comes from (matches docs/DATA.md and the pitch deck).
 SOURCES = {
     "slope_mean": "LOLA DEM (NASA PGDA)", "slope_max": "LOLA DEM (NASA PGDA)",
-    "roughness": "LOLA DEM (NASA PGDA)", "crater_density": "Chandrayaan-2 OHRC / catalogue",
-    "boulder_density": "Chandrayaan-2 OHRC", "illum_frac": "LOLA illumination (NASA PGDA)",
-    "psr_frac": "LOLA illumination (NASA PGDA)", "temp_mean": "LRO Diviner (NASA PDS)",
-    "temp_max": "LRO Diviner (NASA PDS)", "ice_cpr": "Chandrayaan-2 DFSAR (ISSDC PRADAN)",
+    "roughness": "LOLA DEM (NASA PGDA)", "crater_density": "Derived from LOLA DEM (TBD)",
+    "boulder_density": "Chandrayaan-2 OHRC (not used in v1)",
+    "illum_frac": "LOLA illumination maps (PDS LOLA node)",
+    "psr_frac": "LOLA illumination maps (PDS LOLA node)",
+    "temp_mean": "LRO Diviner PRP (PDS Geosciences)", "temp_max": "LRO Diviner PRP (PDS Geosciences)",
+    "ice_cpr": "Chandrayaan-2 DFSAR (ISSDC PRADAN)",
     "hydration_depth": "Chandrayaan-2 IIRS (ISSDC PRADAN)", "earth_los_frac": "Derived from LOLA DEM",
 }
 VIEWS = {"Combined": "combined", "Landing safety": "landing", "Resource value": "resource"}
@@ -47,17 +54,11 @@ def load_config() -> dict:
 
 
 def _synthetic_features(cfg: dict, seed: int = 7) -> pd.DataFrame:
-    """Smooth fake fields on the real 1 km polar grid. Demo/fallback only."""
+    """SYNTHETIC smooth fake fields on the shared 1 km polar grid (src/grid.py).
+    Demo/fallback only: used when features.parquet doesn't exist yet."""
     rng = np.random.default_rng(seed)
-    cell = cfg["grid"]["cell_size_m"]
-    R = cfg["moon"]["radius_m"]
-    rmax = 2 * R * np.tan(np.radians((90 + cfg["grid"]["lat_limit_deg"]) / 2))
-    n = int(rmax // cell)
-    ax = (np.arange(-n, n + 1) + 0.5) * cell
-    X, Y = np.meshgrid(ax, ax)
-    r = np.hypot(X, Y)
-    keep = r <= rmax
-    cols, rows = np.meshgrid(np.arange(2 * n + 1), np.arange(2 * n + 1))
+    df = build_grid(cfg)[["cell_id", "row", "col", "x", "y", "lat", "lon"]]
+    X, Y = df["x"].to_numpy(), df["y"].to_numpy()
 
     def field(scale: int) -> np.ndarray:
         f = np.zeros_like(X)
@@ -84,13 +85,9 @@ def _synthetic_features(cfg: dict, seed: int = 7) -> pd.DataFrame:
         "hydration_depth": unit(1.2 * field(55) - 2) * 0.2,
         "earth_los_frac": unit(1.3 * field(70)),
     }
-    df = pd.DataFrame({"cell_id": np.arange(keep.sum()), "row": rows[keep], "col": cols[keep],
-                       "x": X[keep], "y": Y[keep]})
-    colat = 2 * np.degrees(np.arctan(r[keep] / (2 * R)))
-    df["lat"] = -90 + colat
-    df["lon"] = np.degrees(np.arctan2(X[keep], Y[keep])) % 360
+    df = df.copy()
     for k, v in d.items():
-        df[k] = v[keep].astype("float32")
+        df[k] = v.astype("float32")
         df[k + "_cov"] = False  # nothing here is real
     return df
 
@@ -121,14 +118,15 @@ def load_attribution() -> pd.DataFrame | None:
 
 
 def _demo_pairs(feats: pd.DataFrame, cfg: dict) -> pd.DataFrame:
-    """Fallback pairs so the table renders when P2's file isn't there yet."""
+    """SYNTHETIC placeholder pairs so the table renders before P2's pairs.parquet exists.
+    Random landing cells and random distances: NOT computed, never present as results."""
     rng = np.random.default_rng(1)
     land = feats.sample(40, random_state=2)
-    rows = []
-    for _, c in land.iterrows():
-        ang = rng.uniform(0, 6.28); dist = rng.uniform(1, cfg["pairing"]["radius_km"])
-        rows.append({"landing_cell_id": int(c.cell_id), "distance_km": round(dist, 2)})
-    return pd.DataFrame(rows)
+    return pd.DataFrame({
+        "landing_cell_id": land["cell_id"].astype(int).to_numpy(),
+        "distance_km": rng.uniform(1, cfg["pairing"]["radius_km"], len(land)).round(2),
+        "data": "SYNTHETIC placeholder",
+    })
 
 
 
@@ -273,7 +271,9 @@ def main() -> None:
 
     left, right = st.columns([3, 2], gap="large")
     with left:
-        st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get(sel_key), view_name),
+        # Read the picker's own key: it already holds this run's choice, so the ring
+        # never lags one click behind (sel_key is only set further down the script).
+        st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name),
                         **_STRETCH)
         st.caption("Red markers = top-N sites (min 5 km apart). Cyan ring = site selected on the right. Map binned to ~5 km.")
 
@@ -339,7 +339,8 @@ def site_card(feats, df, norm, cid, weights, cfg) -> None:
 def pairs_table(df, top, cfg, feats) -> None:
     pairs = load_pairs()
     if pairs is None:
-        st.info("pairs.parquet not found yet (P2) - showing placeholder pairs.")
+        st.warning("SYNTHETIC placeholder pairs: pairs.parquet (P2) not found yet. "
+                   "These landing cells and distances are random, not computed.")
         pairs = _demo_pairs(feats, cfg)
     lid = next((c for c in pairs.columns if "land" in c.lower() and "id" in c.lower()), None)
     dcol = next((c for c in pairs.columns if "dist" in c.lower()), None)

@@ -1,0 +1,7 @@
+# Skip Streamlit's first-run email prompt (it blocks `make run` on a fresh machine)
+# and don't send usage statistics. Open the printed Local URL in a browser.
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false
