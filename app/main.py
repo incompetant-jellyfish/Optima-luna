@@ -65,9 +65,6 @@ PALETTE = {'bg': '#120A17', 'panel': '#1C0F24', 'panel2': '#2D1036', 'border': '
 ORANGE, CYAN, GREEN, RED, DIM = (PALETTE["accent"], PALETTE["data"], PALETTE["ok"],
                                  PALETTE["alert"], PALETTE["dim"])
 BG, PANEL, BORDER, TEXT = PALETTE["bg"], PALETTE["panel"], PALETTE["border"], PALETTE["text"]
-# Map scale built from the swatches, monotonic in lightness (dark plum = poor, coral/peach = good).
-MAP_SCALE = [[0.0, "#1A0A20"], [0.2, "#2D1036"], [0.4, "#6B0733"], [0.6, "#6850AD"],
-             [0.8, "#D97352"], [1.0, "#F6D2B8"]]
 MONO = "'Share Tech Mono', ui-monospace, monospace"
 CSS = f"""
 <style>
@@ -261,7 +258,7 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
     xs = g.groupby("c").x.mean().sort_index(); ys = g.groupby("r").y.mean().sort_index()
     z = np.full((len(ys), len(xs)), np.nan)
     z[ys.index.get_indexer(g.r), xs.index.get_indexer(g.c)] = g.v
-    fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale=MAP_SCALE,
+    fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis",
                                zmin=0, zmax=100, colorbar=dict(title=label.upper(), outlinewidth=0, thickness=12),
                                hovertemplate="x %{x:.0f} km, y %{y:.0f} km<br>score %{z:.1f}<extra></extra>"))
     if len(top):
