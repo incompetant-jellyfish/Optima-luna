@@ -36,7 +36,7 @@ if str(ROOT / "app") not in sys.path:
 
 import results_io  # noqa: E402  (reads P2's results/)
 from src.constraints import landing_mask  # noqa: E402
-from src.grid import build_grid  # noqa: E402  (shared 1 km grid, same cell_ids as the pipeline)
+from src.grid import build_grid, lonlat_to_xy, xy_to_lonlat  # noqa: E402  (shared 1 km grid)
 from src.scoring import normalise as _normalise, weighted as _weighted  # noqa: E402
 
 # `width="stretch"` on new Streamlit, `use_container_width=True` on older pins.
@@ -54,7 +54,7 @@ SOURCES = {
     "ice_cpr": "Chandrayaan-2 DFSAR (ISSDC PRADAN)",
     "hydration_depth": "Chandrayaan-2 IIRS (ISSDC PRADAN)", "earth_los_frac": "Derived from LOLA DEM",
 }
-VIEWS = {"Combined": "combined", "Landing safety": "landing", "Resource value": "resource"}
+VIEWS = {"Combined": "combined", "Landing": "landing", "Resource": "resource"}
 
 # ---- look: "lunar ops console". Colours/fonts/corners live in .streamlit/config.toml;
 # this adds what the theme can't: HUD brackets, scanlines, hazard stripes, mono numbers.
@@ -103,9 +103,20 @@ h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {OR
 [data-testid="stMetricLabel"] p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em;
   font-size: .72rem !important; color: {DIM}; }}
 [data-testid="stMetricValue"] {{ font-family: {MONO}; color: {CYAN}; }}
-/* sidebar = control rack */
-section[data-testid="stSidebar"] h2 {{ font-size: .95rem; color: {ORANGE}; }}
-section[data-testid="stSidebar"] label p {{ font-family: {MONO}; font-size: .78rem; letter-spacing: .06em; }}
+/* controls: one label style, one option style, one value style */
+[data-testid="stWidgetLabel"] p {{ font-family: {MONO}; font-size: .78rem !important; letter-spacing: .1em;
+  text-transform: uppercase; color: {DIM} !important; }}
+[role="radiogroup"] label p, [data-testid="stCheckbox"] label p {{ font-family: {MONO}; font-size: .85rem !important;
+  letter-spacing: .04em; color: {TEXT}; text-transform: none; }}
+[data-testid="stSliderThumbValue"], [data-testid="stSliderTickBarMin"], [data-testid="stSliderTickBarMax"],
+[data-testid="stNumberInput"] input {{ font-family: {MONO} !important; font-size: .85rem !important; }}
+.ops-label {{ font-family: {MONO}; font-size: .78rem; letter-spacing: .22em; color: {ORANGE}; text-transform: uppercase;
+  margin: 2px 0 6px; }}
+.ops-legend {{ font-family: {MONO}; font-size: .8rem; color: {DIM}; letter-spacing: .04em; line-height: 1.7; }}
+.ops-legend b {{ color: {TEXT}; font-weight: 400; }}
+/* map toolbar: always visible, readable */
+.modebar {{ opacity: 1 !important; }}
+.modebar-group {{ background: {PANEL} !important; border: 1px solid {BORDER}; padding: 2px !important; }}
 /* panels, tables, alerts: hard edges and a lit top rule */
 [data-testid="stExpander"] details, [data-testid="stDataFrame"], .stPlotlyChart {{
   border: 1px solid {BORDER}; box-shadow: inset 0 1px 0 rgba(217,115,82,.28); }}
@@ -248,38 +259,89 @@ def pick_top(df: pd.DataFrame, col: str, n: int, min_sep_m: float) -> pd.DataFra
 
 
 
+GRATICULE_LATS = (-80, -82, -84, -86, -88)
+MAP_TOOLS = {"displaylogo": False, "displayModeBar": True,
+             "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d", "toggleSpikelines",
+                                        "hoverClosestCartesian", "hoverCompareCartesian"],
+             "toImageButtonOptions": {"format": "png", "filename": "lunar_south_pole_map", "scale": 2}}
+
+
+def _lon_label(lon: float) -> str:
+    lon = (lon + 180) % 360 - 180
+    return "0°" if lon == 0 else "180°" if abs(lon) == 180 else f"{abs(lon):.0f}°{'E' if lon > 0 else 'W'}"
+
+
 def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id, label: str,
-            val_pts: pd.DataFrame | None = None) -> go.Figure:
-    f = max(1, round(5000 / cell_m))  # ~5 km bins for speed
+            val_pts: pd.DataFrame | None = None, bin_km: float = 2.0) -> go.Figure:
+    """Polar stereographic score map with a lat/lon graticule (same projection as LOLA)."""
+    f = max(1, round(bin_km * 1000 / cell_m))
     r = ((df.y - df.y.min()) // cell_m).astype(int) // f
     c = ((df.x - df.x.min()) // cell_m).astype(int) // f
-    g = pd.DataFrame({"r": r, "c": c, "x": df.x, "y": df.y, "v": df[col]}).groupby(["r", "c"]).agg(
-        x=("x", "mean"), y=("y", "mean"), v=("v", "mean")).reset_index()
+    g = pd.DataFrame({"r": r, "c": c, "x": df.x, "y": df.y, "v": df[col], "l": df.landing,
+                      "s": df.resource, "k": df.combined}).groupby(["r", "c"]).mean().reset_index()
     xs = g.groupby("c").x.mean().sort_index(); ys = g.groupby("r").y.mean().sort_index()
-    z = np.full((len(ys), len(xs)), np.nan)
-    z[ys.index.get_indexer(g.r), xs.index.get_indexer(g.c)] = g.v
-    fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis",
-                               zmin=0, zmax=100, colorbar=dict(title=label.upper(), outlinewidth=0, thickness=12),
-                               hovertemplate="x %{x:.0f} km, y %{y:.0f} km<br>score %{z:.1f}<extra></extra>"))
+    ri, ci = ys.index.get_indexer(g.r), xs.index.get_indexer(g.c)
+    shape = (len(ys), len(xs))
+    grids = {k: np.full(shape, np.nan) for k in ("v", "l", "s", "k")}
+    for k in grids:
+        grids[k][ri, ci] = g[k]
+    gx, gy = np.meshgrid(xs.values, ys.values)
+    lon, lat = xy_to_lonlat(gx, gy)
+    custom = np.dstack([lat, lon, grids["l"], grids["s"], grids["k"]])
+    fig = go.Figure(go.Heatmap(
+        z=grids["v"], x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis", zmin=0, zmax=100,
+        customdata=custom, name="score",
+        colorbar=dict(title=dict(text=f"{label.upper()}<br>0–100", side="top"), outlinewidth=0,
+                      thickness=14, len=0.68, y=0.4, yanchor="middle"),
+        hovertemplate=("<b>lat %{customdata[0]:.2f}°, lon %{customdata[1]:.1f}°</b><br>"
+                       "landing %{customdata[2]:.0f} · resource %{customdata[3]:.0f} · combined %{customdata[4]:.0f}"
+                       "<br>x %{x:.0f} km, y %{y:.0f} km<extra></extra>")))
+    # graticule: latitude rings every 2°, longitude spokes every 30°
+    ring = np.radians(np.linspace(0, 360, 241))
+    for la in GRATICULE_LATS:
+        rx, _ = lonlat_to_xy(90.0, la)                     # radius of this latitude ring (m)
+        rad = abs(rx) / 1000
+        fig.add_trace(go.Scatter(x=rad * np.sin(ring), y=rad * np.cos(ring), mode="lines", hoverinfo="skip",
+                                 line=dict(color="rgba(237,227,234,.28)", width=1, dash="dot"), showlegend=False))
+        lx, ly = lonlat_to_xy(135.0, la)
+        fig.add_annotation(x=lx / 1000, y=ly / 1000, text=f"{abs(la)}°S", showarrow=False,
+                           font=dict(family=MONO, size=11, color=TEXT), bgcolor="rgba(18,10,23,.65)")
+    r80 = abs(lonlat_to_xy(90.0, -80)[0]) / 1000
+    for lo in range(0, 360, 30):
+        a = np.radians(lo)
+        fig.add_trace(go.Scatter(x=[0, r80 * np.sin(a)], y=[0, r80 * np.cos(a)], mode="lines", hoverinfo="skip",
+                                 line=dict(color="rgba(237,227,234,.18)", width=1, dash="dot"), showlegend=False))
+        fig.add_annotation(x=1.07 * r80 * np.sin(a), y=1.07 * r80 * np.cos(a), text=_lon_label(lo),
+                           showarrow=False, font=dict(family=MONO, size=11, color=DIM))
+    fig.add_trace(go.Scatter(x=[0], y=[0], mode="markers+text", text=["S POLE"], textposition="top center",
+                             textfont=dict(family=MONO, size=11, color=TEXT), hoverinfo="skip", showlegend=False,
+                             marker=dict(symbol="cross-thin", size=14, line=dict(color=TEXT, width=2))))
     if len(top):
         fig.add_trace(go.Scatter(
             x=top.x / 1000, y=top.y / 1000, mode="markers+text", text=[str(i + 1) for i in range(len(top))],
-            textposition="top center", textfont=dict(color=TEXT, size=12, family=MONO),
+            textposition="top center", textfont=dict(color=TEXT, size=12, family=MONO), name="Top-N sites",
             marker=dict(size=10, symbol="square", color=BG, line=dict(color=TEXT, width=2)),
-            customdata=top.cell_id, hovertemplate="#%{text}  cell %{customdata}<extra></extra>", showlegend=False))
+            customdata=np.c_[top.cell_id, top.lat, top.lon],
+            hovertemplate="<b>#%{text}</b> cell %{customdata[0]}<br>%{customdata[1]:.2f}°, %{customdata[2]:.1f}°E<extra></extra>"))
     if val_pts is not None and len(val_pts):
         fig.add_trace(go.Scatter(
             x=val_pts.x / 1000, y=val_pts.y / 1000, mode="markers+text", text=val_pts.name,
-            textposition="bottom center", textfont=dict(color=GREEN, size=11, family=MONO),
+            textposition="bottom center", textfont=dict(color=GREEN, size=11, family=MONO), name="NASA reference",
             marker=dict(size=13, symbol="diamond", color=GREEN, line=dict(color=BG, width=2)),
-            hovertext=val_pts.hover, hovertemplate="%{hovertext}<extra>NASA reference site</extra>",
-            showlegend=False))
+            hovertext=val_pts.hover, hovertemplate="%{hovertext}<extra>NASA reference site</extra>"))
     if sel_id is not None and (df.cell_id == sel_id).any():
         s = df[df.cell_id == sel_id].iloc[0]
-        fig.add_trace(go.Scatter(x=[s.x / 1000], y=[s.y / 1000], mode="markers", showlegend=False,
+        fig.add_trace(go.Scatter(x=[s.x / 1000], y=[s.y / 1000], mode="markers", name="Selected site",
+                                 hoverinfo="skip",
                                  marker=dict(size=24, symbol="square-open", color=TEXT, line=dict(color=TEXT, width=3))))
-    fig.update_layout(height=640, margin=dict(l=0, r=0, t=10, b=0), yaxis=dict(scaleanchor="x", title="km (S-polar stereographic)"),
-                      xaxis=dict(title="km"))
+    lim = 1.12 * r80
+    fig.update_layout(
+        height=940, margin=dict(l=10, r=10, t=40, b=10),
+        legend=dict(orientation="h", x=0, y=1.04, bgcolor="rgba(0,0,0,0)", font=dict(family=MONO, size=12)),
+        modebar=dict(bgcolor=PANEL, color=TEXT, activecolor=ORANGE, orientation="v"),
+        xaxis=dict(title="x (km from pole)", range=[-lim, lim], showgrid=False, zeroline=False),
+        yaxis=dict(title="y (km from pole)", range=[-lim, lim], showgrid=False, zeroline=False,
+                   scaleanchor="x", scaleratio=1))
     return style_fig(fig)
 
 
@@ -289,7 +351,8 @@ def confidence_label(p: float) -> str:
 
 # --------------------------------------------------------------------------- app
 def main() -> None:
-    st.set_page_config(page_title="Lunar South Pole Site Ranker", layout="wide", page_icon="🌘")
+    st.set_page_config(page_title="Lunar South Pole Site Ranker", layout="wide", page_icon="🌘",
+                       initial_sidebar_state="collapsed")
     st.markdown(CSS, unsafe_allow_html=True)
     cfg = load_config()
     feats, is_synth = load_features()
@@ -319,24 +382,29 @@ def main() -> None:
         st.warning(w)
     st.caption("Decision support, not a final site selector. 80S-90S on a 1 km grid.")
 
-    # ---- sidebar: controls
-    sb = st.sidebar
-    sb.header("Controls")
-    view_name = sb.radio("Map shows", list(VIEWS), horizontal=False)
-    view = VIEWS[view_name]
-    mix = sb.slider("Combined: resource weight", 0.0, 1.0, 0.5, 0.05, help="0 = landing only, 1 = resource only")
-    hide = sb.checkbox("Hide cells failing hard landing constraints", True)
-    top_n = int(sb.number_input("Top-N sites", 3, 50, cfg["pairing"]["top_n"]))
-    if sb.button("Reset weights"):
-        for k in [k for k in st.session_state if k.startswith("w_")]:
-            del st.session_state[k]
-    weights: dict[str, dict[str, float]] = {}
-    for grp, title in (("landing", "Landing weights"), ("resource", "Resource weights")):
-        with sb.expander(title, expanded=False):
-            weights[grp] = {}
-            for f, spec in cfg["scoring"][grp].items():
-                weights[grp][f] = st.slider(f"{f} ({spec['direction']} is better)", 0.0, 1.0, float(spec["weight"]),
-                                            0.05, key=f"w_{grp}_{f}")
+    # ---- control bar (horizontal, one row) + feature weights below it
+    with st.container(border=True):
+        st.markdown('<div class="ops-label">Controls</div>', unsafe_allow_html=True)
+        c1, c2, c3, c4, c5 = st.columns([2.4, 2.2, 1.2, 1.9, 1.3], gap="medium", vertical_alignment="bottom")
+        view_name = c1.radio("Map shows", list(VIEWS), horizontal=True, key="view")
+        view = VIEWS[view_name]
+        mix = c2.slider("Combined: resource share", 0.0, 1.0, 0.5, 0.05, key="mix",
+                        help="0 = landing only, 1 = resource only")
+        top_n = int(c3.number_input("Top-N sites", 3, 50, cfg["pairing"]["top_n"], key="top_n"))
+        hide = c4.checkbox("Hide unsafe landing cells", True, key="hide",
+                           help="Cells failing a hard landing rule (slope, roughness, boulders)")
+        if c5.button("Reset weights", **_STRETCH):
+            for k in [k for k in st.session_state if k.startswith("w_")]:
+                del st.session_state[k]
+        weights: dict[str, dict[str, float]] = {}
+        with st.expander("Feature weights · landing and resource", expanded=False):
+            cols = st.columns(2, gap="large")
+            for col, (grp, title) in zip(cols, (("landing", "Landing"), ("resource", "Resource"))):
+                col.markdown(f'<div class="ops-label">{title} weights</div>', unsafe_allow_html=True)
+                weights[grp] = {}
+                for f, spec in cfg["scoring"][grp].items():
+                    weights[grp][f] = col.slider(f"{f} · {spec['direction']} is better", 0.0, 1.0,
+                                                 float(spec["weight"]), 0.05, key=f"w_{grp}_{f}")
 
     # ---- live scoring (vectorised; instant)
     norm = normalised(feats)
@@ -350,23 +418,33 @@ def main() -> None:
     top = pick_top(df, view, top_n, min_sep_m=5000)
     sel_key = "selected_cell"
 
-    left, right = st.columns([3, 2], gap="large")
-    with left:
-        # Read the picker's own key: it already holds this run's choice, so the ring
-        # never lags one click behind (sel_key is only set further down the script).
-        val_pts = results_io.validation_points(res["validation"], feats, cfg["moon"]["radius_m"],
-                                               cfg["grid"]["lat_limit_deg"])
-        st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
-                        **_STRETCH)
-        st.caption("Dark squares = top-N sites (min 5 km apart). Lilac diamonds = NASA reference sites "
-                   "(rank from results/validation.csv). White box = selected site. Map binned to ~5 km.")
+    # ---- map, full width
+    st.subheader(f"South polar map · {view_name}")
+    # Read the picker's own key: it already holds this run's choice, so the box
+    # never lags one click behind (sel_key is only set further down the script).
+    val_pts = results_io.validation_points(res["validation"], feats, cfg["moon"]["radius_m"],
+                                           cfg["grid"]["lat_limit_deg"])
+    st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
+                    config=MAP_TOOLS, **_STRETCH)
+    st.markdown(
+        f"""<div class="ops-legend">
+        <b>How to read it:</b> polar stereographic view of 80°S–90°S, the same projection as NASA’s LOLA maps;
+        the pole is at the centre, dotted rings mark latitude every 2°, spokes mark longitude every 30°.
+        Each pixel is the mean {view_name.lower()} score of a 2 km block (0 = poor, 100 = best).
+        {"Black gaps are cells that fail a hard landing rule (steep crater walls)." if hide else ""}<br>
+        <b>Map tools (top right):</b> zoom box · pan · zoom in / out · reset view (house) · save as PNG.
+        Scroll to zoom, double-click to reset. Hover any pixel for its latitude, longitude and all three scores.
+        </div>""", unsafe_allow_html=True)
 
-    with right:
-        st.subheader(f"Top {len(top)} - {view_name}")
+    st.divider()
+    left, right = st.columns([1, 1], gap="large")
+    with left:
+        st.subheader(f"Top {len(top)} · {view_name}")
         tl = top[["cell_id", "lat", "lon", "landing", "resource", "combined"]].round(2).reset_index(drop=True)
         tl.index = tl.index + 1
-        st.dataframe(tl, **_STRETCH, height=300)
+        st.dataframe(tl, **_STRETCH, height=35 * (len(tl) + 1) + 3)
 
+    with right:
         st.subheader("Site detail")
         if top.empty:
             st.info("No cells to show - relax the constraints or weights.")

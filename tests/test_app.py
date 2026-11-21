@@ -33,8 +33,8 @@ def test_synthetic_banner_shown(at):
 
 def test_weight_slider_reranks(at):
     before = list(at.dataframe[0].value.cell_id)
-    at.sidebar.slider[1].set_value(0.0)   # slope_mean weight
-    at.sidebar.slider[5].set_value(1.0)   # illum_frac weight
+    at.slider(key="w_landing_slope_mean").set_value(0.0)
+    at.slider(key="w_landing_illum_frac").set_value(1.0)
     at.run()
     assert not at.exception
     assert list(at.dataframe[0].value.cell_id) != before
