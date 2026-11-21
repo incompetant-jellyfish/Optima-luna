@@ -98,6 +98,10 @@ header[data-testid="stHeader"] {{ background: transparent !important; }}
 .st-key-moonmap .stPlotlyChart {{ background: radial-gradient(circle at 50% 52%, rgba(154,134,218,.16), rgba(104,80,173,.05) 38%, transparent 62%) !important;
   backdrop-filter: none; -webkit-backdrop-filter: none; border-color: transparent !important; box-shadow: none; }}
 .st-key-moonmap .stPlotlyChart:hover {{ box-shadow: none; border-color: transparent !important; }}
+.st-key-moonmap .stPlotlyChart {{ border: 0 !important; }}
+.st-key-moonmap, .st-key-moonmap .stPlotlyChart, .st-key-moonmap .js-plotly-plot {{ overflow: clip !important;
+  scrollbar-width: none; }}
+.st-key-moonmap ::-webkit-scrollbar, .st-key-moonmap::-webkit-scrollbar {{ display: none; }}
 /* gentle arrival so the page doesn't just snap in */
 @keyframes luna-rise {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: none; }} }}
 .ops-hero, .stPlotlyChart, [data-testid="stDataFrame"], [data-testid="stMetric"] {{ animation: luna-rise .6s ease-out both; }}
