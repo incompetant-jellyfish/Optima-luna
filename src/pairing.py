@@ -64,10 +64,10 @@ def rank_pairs(
     tree = cKDTree(resource[["x", "y"]].to_numpy(float))
     radius_m = radius * 1000.0
     rows = []
-    # Query all landing coordinates in one compiled KD-tree call rather than making
-    # hundreds of thousands of Python -> C transitions on the full 290k-cell grid.
-    nearby_by_landing = tree.query_ball_point(land[["x", "y"]].to_numpy(float), r=radius_m * 1.02)
-    for (_, site), nearby_indices in zip(land.iterrows(), nearby_by_landing):
+    # Neighbours are looked up per site, lazily: the loop stops early (bound below), so
+    # querying every eligible cell up front cost ~5 GB of RAM for lists never used.
+    land_xy = land[["x", "y"]].to_numpy(float)
+    for i, (_, site) in enumerate(land.iterrows()):
         if len(rows) >= limit:
             cutoff = sorted(
                 (r["combined_score"] for r in rows),
@@ -78,6 +78,7 @@ def rank_pairs(
 
             if upper_bound <= cutoff:
                 break
+        nearby_indices = tree.query_ball_point(land_xy[i], r=radius_m * 1.02)
         if not nearby_indices:
             continue
         candidates = resource.iloc[nearby_indices].copy()

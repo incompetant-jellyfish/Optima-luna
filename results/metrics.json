@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "label_type": "weighted-scoring pseudo-labels",
+    "spatial_block_size_m": 10000,
+    "seed": 20261121,
+    "ensemble_size": 3,
+    "feature_columns": [
+      "slope_mean",
+      "slope_max",
+      "roughness",
+      "boulder_density",
+      "crater_density",
+      "illum_frac",
+      "psr_frac",
+      "temp_mean",
+      "temp_max",
+      "ice_cpr",
+      "hydration_depth",
+      "earth_los_frac"
+    ],
+    "mlp_training_sample_cap": 30000,
+    "warning": "R2 evaluates imitation/generalisation of this scoring heuristic, not scientific truth."
+  },
+  "metrics": {
+    "landing_score/baseline": {
+      "target": "landing_score",
+      "kind": "baseline",
+      "training_mask_rate": 0.0,
+      "evaluation_mask_rate": 0.15,
+      "n_train": 185449,
+      "n_train_available_before_mlp_cap": 185449,
+      "n_validation": 46526,
+      "n_test": 58389,
+      "train_spatial_blocks": 1924,
+      "validation_spatial_blocks": 482,
+      "test_spatial_blocks": 602,
+      "validation_r2": 0.958643354634371,
+      "test_r2": 0.9560029050475252,
+      "validation_r2_with_masked_inputs": 0.9398987663892959,
+      "test_r2_with_masked_inputs": 0.9378124450124004,
+      "test_mae": 0.017937544501464387,
+      "member_test_r2": [
+        0.9560029050475252
+      ],
+      "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
+    },
+    "landing_score/mlp": {
+      "target": "landing_score",
+      "kind": "mlp",
+      "training_mask_rate": 0.15,
+      "evaluation_mask_rate": 0.15,
+      "n_train": 30000,
+      "n_train_available_before_mlp_cap": 185449,
+      "n_validation": 46526,
+      "n_test": 58389,
+      "train_spatial_blocks": 1917,
+      "validation_spatial_blocks": 482,
+      "test_spatial_blocks": 602,
+      "validation_r2": 0.9615147952278496,
+      "test_r2": 0.9619279009005242,
+      "validation_r2_with_masked_inputs": 0.9501122738585921,
+      "test_r2_with_masked_inputs": 0.9144058408489697,
+      "test_mae": 0.020718912668930698,
+      "member_test_r2": [
+        0.7383354493440146,
+        0.9516245315966396,
+        0.9952489304350368
+      ],
+      "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
+    },
+    "resource_score/baseline": {
+      "target": "resource_score",
+      "kind": "baseline",
+      "training_mask_rate": 0.0,
+      "evaluation_mask_rate": 0.15,
+      "n_train": 185449,
+      "n_train_available_before_mlp_cap": 185449,
+      "n_validation": 46526,
+      "n_test": 58389,
+      "train_spatial_blocks": 1924,
+      "validation_spatial_blocks": 482,
+      "test_spatial_blocks": 602,
+      "validation_r2": 0.9671287920365459,
+      "test_r2": 0.9662711567175969,
+      "validation_r2_with_masked_inputs": 0.9481866096953012,
+      "test_r2_with_masked_inputs": 0.4290782600979697,
+      "test_mae": 0.015199004938635517,
+      "member_test_r2": [
+        0.9662711567175969
+      ],
+      "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
+    },
+    "resource_score/mlp": {
+      "target": "resource_score",
+      "kind": "mlp",
+      "training_mask_rate": 0.15,
+      "evaluation_mask_rate": 0.15,
+      "n_train": 30000,
+      "n_train_available_before_mlp_cap": 185449,
+      "n_validation": 46526,
+      "n_test": 58389,
+      "train_spatial_blocks": 1917,
+      "validation_spatial_blocks": 482,
+      "test_spatial_blocks": 602,
+      "validation_r2": 0.9864853125919174,
+      "test_r2": 0.9871545875558828,
+      "validation_r2_with_masked_inputs": 0.972370175111032,
+      "test_r2_with_masked_inputs": 0.5093875770351958,
+      "test_mae": 0.011623227650048236,
+      "member_test_r2": [
+        0.9956417042055564,
+        0.99562073563364,
+        0.9094500771822163
+      ],
+      "interpretation": "R2 against scoring-rule pseudo-labels; not empirical mission-performance accuracy."
+    }
+  },
+  "features_version": "v1-lola",
+  "train_seconds": 41.2
+}

@@ -7,6 +7,7 @@ not evidence of physical landing safety, ice abundance, or mission success.
 from __future__ import annotations
 import argparse
 import json
+import time
 from pathlib import Path
 from src.scoring import score
 import joblib
@@ -239,7 +240,17 @@ def main() -> None:
     parser.add_argument("--mask-rate", type=float, default=0.15)
     args = parser.parse_args()
     data = pd.read_parquet(args.input)
+    t0 = time.perf_counter()
     predictions, metrics = train_models(data, mask_rate=args.mask_rate)
+    train_seconds = round(time.perf_counter() - t0, 1)
+    # Record the run's features version and time next to the metrics (read by src/results.py).
+    mpath = ROOT / "models" / "metrics.json"
+    meta = json.loads(mpath.read_text())
+    meta["features_version"] = (str(data["features_version"].iloc[0])
+                                if "features_version" in data and len(data) else "unknown")
+    meta["train_seconds"] = train_seconds
+    mpath.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    print(f"Trained in {train_seconds} s on features {meta['features_version']}")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     predictions.to_parquet(args.output, index=False)
     print(json.dumps(metrics, indent=2))
