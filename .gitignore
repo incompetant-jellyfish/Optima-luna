@@ -15,3 +15,8 @@ models/
 .vscode/
 .idea/
 .DS_Store
+
+# Claude Rules
+rules.md
+AI_USAGE.md
+idea.md
