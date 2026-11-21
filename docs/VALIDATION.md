@@ -42,13 +42,35 @@ final landing-site selection ([NASA candidate-region announcement](https://www.n
 The coordinates are stored in `config.yaml` under `validation.reference_sites`. `src.validate`
 transforms them onto the active polar grid, finds the nearest grid cell and reports distance
 to cell centre, rank in the selected score column, and whether the nearest cell appears in
-top-K. Run it against actual scored parquet artefacts to obtain the real rank result. No
-real top-K outcome is asserted in this source document because no real feature/model outputs
-were present when it was drafted.
+top-K.
+
+### Result (features v1-lola, 22 Nov 2026, `results/validation.csv`)
+
+Real layers: LOLA slope / roughness (40 m DEM), illumination and permanent shadow. Ice,
+hydration, temperature, boulders, craters and Earth visibility are still SYNTHETIC.
+Ranked by landing score over all 290,364 cells, top-K = 10.
+
+| Reference | Nearest cell (offset) | Landing score | Rank | In top 10 | What pulled it down |
+|---|---|---:|---:|:---:|---|
+| Shackleton Rim R04 | 190623 (707 m) | 0.35 | 281,536 | No | **Fails the slope rule:** mean slope 30.6° (limit 10°). The rim is a narrow crest; a 1 km cell centred 707 m away is mostly the crater's inner wall. Illumination 0.21 also costs 0.14. |
+| Malapert Massif R23 | 111934 (0.5 m) | 0.70 | 98,656 | No | Passes every rule (slope 7.1°). Loses most to roughness 3.0° (−0.09), slope (−0.08) and illumination 0.36 (−0.06). Good, not exceptional, at 1 km. |
+
+**Verdict: both reference sites miss the top 10.** Honest reading: (1) at 1 km, a narrow
+sunlit rim cannot be separated from the steep wall beside it, a resolution limit of our grid;
+(2) Malapert is a reasonable but not top-ranked cell under our weights, which favour flatness
+and sunlight over anything mission-specific (comms, traverse, science). NASA's regions also
+weigh factors we don't model. This is a disagreement we report, not one we tune away.
+
+Model (held-out 10 km spatial blocks, test split): landing R² Ridge 0.994 vs MLP 0.969
+(with 15% of inputs hidden: 0.975 vs 0.904); resource R² MLP 0.987 vs Ridge 0.965 (hidden:
+0.558 vs 0.425). The MLP helps on the resource score, not on landing. R² measures imitation of
+our scoring rule, not landing accuracy.
 
 ## Known limitations / failures
 
-- No real raster layers are bundled; empirical validation is blocked until data ingestion.
+- Only LOLA layers are real so far; ice, hydration, temperature, boulders, craters and Earth
+  visibility are synthetic placeholders (confidence shows this per cell).
+- 1 km cells average narrow features (crater rims) with their surroundings.
 - Pairing cost is `straight-line distance × mean endpoint slope`. It is not a least-cost route
   and does not find a path around cliffs, craters, boulders, or no-data regions.
 - KD-tree lookup selects nearby candidates in projected space; final radius filtering uses
@@ -64,9 +86,8 @@ were present when it was drafted.
 ## Reproduction
 
 ```bash
-python -m src.synth
-python -m src.model --input data/processed/features.parquet
-python -m src.pairing --input data/processed/scored_features.parquet
-python -m src.validate --input data/processed/scored_features.parquet
-python -m pytest -q
+make ingest      # LOLA rasters in data/raw (scripts/download_data.py)
+make features    # features.parquet (real layers + labelled synthetic fill)
+make train       # model -> pairs -> validate -> results/
+make test
 ```

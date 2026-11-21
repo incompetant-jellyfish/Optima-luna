@@ -1,6 +1,6 @@
 # Lunar South Pole Site Suitability Ranker
 
-ASTRA 2026 hackathon project. A decision-support tool that divides 80°S–90°S on the Moon
+**Live demo:** _link added after deploy_ · ASTRA 2026 hackathon project. A decision-support tool that divides 80°S–90°S on the Moon
 into 1 km cells, scores each for landing safety and resource value, and pairs safe landing
 cells with nearby ice. **It is decision support, not a final site selector or a
 mission-certified hazard assessment.**
@@ -34,15 +34,16 @@ worth going to for resources?*, then pair the two within driving distance.
 
 ## Results
 
-Filled in from P2's final run (`results/metrics.json`, `results/validation.csv`):
+From `results/` (training 37 s on CPU; 62% of cells pass the landing rules). Details and the
+why behind each miss: [docs/VALIDATION.md](docs/VALIDATION.md).
 
 | | Value |
 |---|---|
-| Features version | TODO |
-| Held-out R², landing (MLP vs Ridge, masked inputs) | TODO |
-| Held-out R², resource (MLP vs Ridge, masked inputs) | TODO |
-| Shackleton rim: rank / in top-K | TODO |
-| Malapert massif: rank / in top-K | TODO |
+| Features version | v1-lola: real LOLA slope, roughness, illumination, shadow; rest synthetic |
+| Held-out R², landing (MLP vs Ridge; with 15% inputs hidden) | 0.969 vs **0.994** (0.904 vs **0.975**) |
+| Held-out R², resource (MLP vs Ridge; with 15% inputs hidden) | **0.987** vs 0.965 (**0.558** vs 0.425) |
+| Shackleton rim R04: rank / in top 10 | 281,536 / no: its 1 km cell is mostly 30° crater wall |
+| Malapert massif R23: rank / in top 10 | 98,656 / no: passes all rules, not top under our weights |
 
 ## Limitations
 
@@ -62,24 +63,33 @@ on real data, so mission planners spend detailed analysis time only where it mat
 ## Setup and run
 
 ```bash
+git clone https://github.com/incompetant-jellyfish/Optima-luna.git && cd Optima-luna
 make setup      # create .venv and install pinned requirements
 make test       # run the tests
 make run        # start the dashboard: open the printed Local URL
 ```
 
 Requires Python 3.11+. On NixOS the Makefile adds the needed system libraries automatically.
+Without `make` (Windows): `python -m venv .venv`, `.venv\Scripts\pip install -r requirements.txt`,
+`.venv\Scripts\streamlit run app/main.py`.
+
+**The dashboard works straight after cloning:** the committed `results/` folder holds the
+features table, model predictions, pairs, metrics and validation from our last run. You only
+need the raw data to rebuild them.
 
 ## Pipeline
 
+Rebuild everything from raw NASA data (~1.5 GB download, then ~2 minutes of compute):
+
 ```bash
-make grid       # 1 km polar stereographic grid summary (290,364 cells)
-make ingest     # real layers from data/raw (paths in config.yaml → ingest), if present
+python3 scripts/download_data.py --only illum dem   # NASA PGDA LOLA files -> data/raw/ (resumable)
+make ingest     # rasters -> 1 km layers (slope/roughness from the 40 m DEM: ~15 s)
 make features   # data/processed/features.parquet: real layers + SYNTHETIC fill, _cov flags
 make scores     # landing / resource scores, confidence, hard-constraint mask
-make model      # pseudo-label models: Ridge baseline vs masked MLP ensemble
-make pairs      # landing cell → nearby ice cell pairs
-make validate   # check reference sites against our ranking
+make train      # model (~40 s) -> pairs (~30 s) -> validate -> results/
 ```
+
+Individual steps: `make grid`, `make model`, `make pairs`, `make validate`, `make results`.
 
 | Step | Module | What it does |
 |---|---|---|
@@ -91,7 +101,8 @@ make validate   # check reference sites against our ranking
 | Pairing | `src/pairing.py` | For each landing candidate, a nearby resource cell. v1 route cost = straight-line distance × mean endpoint slope: a heuristic, not a path planner |
 | Explain | `src/explain.py`, `scoring.contributions` | Additive per-feature contributions; one-feature perturbation effects for the MLP (not SHAP values) |
 | Validate | `src/validate.py` | Nearest cells to source-cited Shackleton Rim and Malapert Massif points; their rank and top-K status |
-| Dashboard | `app/main.py` | Heatmap, live weight sliders, site card, pairs table, SYNTHETIC banner |
+| Results | `src/results.py` | Slim, committed `results/`: predictions, pairs, metrics, validation, features |
+| Dashboard | `app/main.py`, `app/results_io.py` | Heatmap with NASA reference sites, live weight sliders, site card with confidence and model ± spread, pairs table, model panel, SYNTHETIC/PARTLY SYNTHETIC banners |
 
 ## Interpreting metrics honestly
 
@@ -106,6 +117,18 @@ Real data products, download notes and the resampling rule: [docs/DATA.md](docs/
 Validation protocol, reference coordinate sources and known failures:
 [docs/VALIDATION.md](docs/VALIDATION.md). Synthetic data is only a development and demo
 fallback and is labelled SYNTHETIC wherever it appears.
+
+## Repository layout
+
+```
+app/        Streamlit dashboard + results reader
+src/        pipeline: grid, ingest/, features, scoring, constraints, model, pairing, explain, validate, results
+tests/      pytest suite (make test)
+results/    committed outputs of the last run (what the dashboard shows)
+scripts/    download_data.py (parallel, resumable NASA downloads)
+docs/       DATA.md (sources), VALIDATION.md (results + misses), TESTING.md, tasks/
+config.yaml every threshold, weight and path, in one place
+```
 
 ## Credits
 
