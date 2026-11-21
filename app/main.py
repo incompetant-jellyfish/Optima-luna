@@ -56,6 +56,71 @@ SOURCES = {
 }
 VIEWS = {"Combined": "combined", "Landing safety": "landing", "Resource value": "resource"}
 
+# ---- look: "lunar ops console". Colours/fonts/corners live in .streamlit/config.toml;
+# this adds what the theme can't: HUD brackets, scanlines, hazard stripes, mono numbers.
+ORANGE, CYAN, GREEN, RED, DIM = "#FF5A1F", "#00E5FF", "#39FF88", "#E0245E", "#5F7380"
+MONO = "'Share Tech Mono', ui-monospace, monospace"
+CSS = f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
+.stApp {{
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(255,90,31,.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(0,229,255,.05), transparent 60%),
+    #04060A;
+}}
+/* faint scanlines over everything, never blocking clicks */
+.stApp::after {{
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+}}
+header[data-testid="stHeader"] {{ background: transparent; }}
+h1, h2, h3 {{ text-transform: uppercase; letter-spacing: .12em; }}
+h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {ORANGE};
+      padding-left: .6rem !important; }}
+/* hero header */
+.ops-hero {{ border: 1px solid #1F2C38; border-left: 4px solid {ORANGE}; padding: 14px 18px 12px;
+  background: linear-gradient(90deg, rgba(255,90,31,.10), rgba(11,16,23,.6) 40%); position: relative; }}
+.ops-kicker {{ font-family: {MONO}; color: {ORANGE}; font-size: .78rem; letter-spacing: .25em; }}
+.ops-title {{ font-family: Orbitron, sans-serif; font-weight: 900; font-size: clamp(1.4rem, 3vw, 2.3rem);
+  letter-spacing: .08em; text-transform: uppercase; color: #EAF2F7; line-height: 1.15; margin: 4px 0; }}
+.ops-sub {{ font-family: {MONO}; color: {DIM}; font-size: .8rem; letter-spacing: .12em; }}
+.ops-sub b {{ color: {GREEN}; font-weight: 400; }}
+.ops-hazard {{ height: 6px; margin: 10px 0 4px;
+  background: repeating-linear-gradient(-45deg, {ORANGE} 0 10px, #04060A 10px 20px); opacity: .85; }}
+/* metric tiles: HUD panel with corner brackets */
+[data-testid="stMetric"] {{ background: #0B1017; border: 1px solid #1F2C38; padding: 10px 12px; position: relative; }}
+[data-testid="stMetric"]::before, [data-testid="stMetric"]::after {{ content: ""; position: absolute;
+  width: 10px; height: 10px; border-color: {ORANGE}; border-style: solid; }}
+[data-testid="stMetric"]::before {{ top: -1px; left: -1px; border-width: 2px 0 0 2px; }}
+[data-testid="stMetric"]::after {{ bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }}
+[data-testid="stMetricLabel"] p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em;
+  font-size: .72rem !important; color: {DIM}; }}
+[data-testid="stMetricValue"] {{ font-family: {MONO}; color: {CYAN}; }}
+/* sidebar = control rack */
+section[data-testid="stSidebar"] h2 {{ font-size: .95rem; color: {ORANGE}; }}
+section[data-testid="stSidebar"] label p {{ font-family: {MONO}; font-size: .78rem; letter-spacing: .06em; }}
+/* panels, tables, alerts: hard edges and a lit top rule */
+[data-testid="stExpander"] details, [data-testid="stDataFrame"], .stPlotlyChart {{
+  border: 1px solid #1F2C38; box-shadow: inset 0 1px 0 rgba(255,90,31,.35); }}
+[data-testid="stExpander"] summary p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em; }}
+[data-testid="stAlert"] {{ font-family: {MONO}; letter-spacing: .03em; border-left: 4px solid currentColor; }}
+.stCaption, [data-testid="stCaptionContainer"] {{ font-family: {MONO}; color: {DIM} !important; letter-spacing: .04em; }}
+button[kind] {{ text-transform: uppercase; letter-spacing: .14em; font-family: {MONO}; }}
+hr {{ border-color: #1F2C38 !important; }}
+</style>
+"""
+
+
+def style_fig(fig: go.Figure) -> go.Figure:
+    """Plotly in the console look: transparent paper, mono labels, dim grid."""
+    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="#04060A",
+                      font=dict(family=MONO, color="#9FB2BF", size=12),
+                      hoverlabel=dict(bgcolor="#0B1017", bordercolor=ORANGE, font=dict(family=MONO, color="#EAF2F7")))
+    fig.update_xaxes(gridcolor="#111A23", zerolinecolor="#1F2C38", linecolor="#1F2C38")
+    fig.update_yaxes(gridcolor="#111A23", zerolinecolor="#1F2C38", linecolor="#1F2C38")
+    return fig
+
 
 
 @st.cache_data(show_spinner=False)
@@ -188,28 +253,28 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
     z = np.full((len(ys), len(xs)), np.nan)
     z[ys.index.get_indexer(g.r), xs.index.get_indexer(g.c)] = g.v
     fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis",
-                               zmin=0, zmax=100, colorbar=dict(title=label),
+                               zmin=0, zmax=100, colorbar=dict(title=label.upper(), outlinewidth=0, thickness=12),
                                hovertemplate="x %{x:.0f} km, y %{y:.0f} km<br>score %{z:.1f}<extra></extra>"))
     if len(top):
         fig.add_trace(go.Scatter(
             x=top.x / 1000, y=top.y / 1000, mode="markers+text", text=[str(i + 1) for i in range(len(top))],
-            textposition="top center", textfont=dict(color="white", size=11),
-            marker=dict(size=9, color="red", line=dict(color="white", width=1.5)),
+            textposition="top center", textfont=dict(color=ORANGE, size=12, family=MONO),
+            marker=dict(size=10, symbol="square", color=ORANGE, line=dict(color="#04060A", width=2)),
             customdata=top.cell_id, hovertemplate="#%{text}  cell %{customdata}<extra></extra>", showlegend=False))
     if val_pts is not None and len(val_pts):
         fig.add_trace(go.Scatter(
             x=val_pts.x / 1000, y=val_pts.y / 1000, mode="markers+text", text=val_pts.name,
-            textposition="bottom center", textfont=dict(color="orange", size=10),
-            marker=dict(size=12, symbol="diamond", color="orange", line=dict(color="black", width=1)),
+            textposition="bottom center", textfont=dict(color=CYAN, size=11, family=MONO),
+            marker=dict(size=13, symbol="diamond", color=CYAN, line=dict(color="#04060A", width=2)),
             hovertext=val_pts.hover, hovertemplate="%{hovertext}<extra>NASA reference site</extra>",
             showlegend=False))
     if sel_id is not None and (df.cell_id == sel_id).any():
         s = df[df.cell_id == sel_id].iloc[0]
         fig.add_trace(go.Scatter(x=[s.x / 1000], y=[s.y / 1000], mode="markers", showlegend=False,
-                                 marker=dict(size=18, color="rgba(0,0,0,0)", line=dict(color="cyan", width=3))))
+                                 marker=dict(size=22, symbol="square-open", color=GREEN, line=dict(color=GREEN, width=3))))
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=10, b=0), yaxis=dict(scaleanchor="x", title="km (S-polar stereographic)"),
                       xaxis=dict(title="km"))
-    return fig
+    return style_fig(fig)
 
 
 def confidence_label(p: float) -> str:
@@ -218,12 +283,19 @@ def confidence_label(p: float) -> str:
 
 # --------------------------------------------------------------------------- app
 def main() -> None:
-    st.set_page_config(page_title="Lunar South Pole Site Ranker", layout="wide")
+    st.set_page_config(page_title="Lunar South Pole Site Ranker", layout="wide", page_icon="🌘")
+    st.markdown(CSS, unsafe_allow_html=True)
     cfg = load_config()
     feats, is_synth = load_features()
     cell_m = cfg["grid"]["cell_size_m"]
 
-    st.title("Lunar South Pole Site Suitability Ranker")
+    st.markdown(
+        f"""<div class="ops-hero">
+        <div class="ops-kicker">SYS//LUNAR-OPS · SECTOR 80°S–90°S · GRID 1 KM</div>
+        <div class="ops-title">Lunar South Pole Site Suitability Ranker</div>
+        <div class="ops-sub">CELLS <b>{len(feats):,}</b> · FEATURES <b>{len(cfg['features'])}</b> ·
+        STATUS <b>{'SYNTHETIC' if is_synth else 'LIVE DATA'}</b></div>
+        <div class="ops-hazard"></div></div>""", unsafe_allow_html=True)
     cov_cols = [c for c in feats.columns if c.endswith("_cov")]
     real_pct = 100 * float(feats[cov_cols].to_numpy().mean()) if cov_cols else 0.0
     if is_synth or real_pct == 0:
@@ -280,8 +352,8 @@ def main() -> None:
                                                cfg["grid"]["lat_limit_deg"])
         st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
                         **_STRETCH)
-        st.caption("Red markers = top-N sites (min 5 km apart). Orange diamonds = NASA reference sites "
-                   "(rank from results/validation.csv). Cyan ring = selected site. Map binned to ~5 km.")
+        st.caption("Orange squares = top-N sites (min 5 km apart). Cyan diamonds = NASA reference sites "
+                   "(rank from results/validation.csv). Green box = selected site. Map binned to ~5 km.")
 
     with right:
         st.subheader(f"Top {len(top)} - {view_name}")
@@ -345,11 +417,11 @@ def site_card(feats, df, norm, cid, weights, cfg, res) -> None:
                          "real data": bool(row.get(f + "_cov", False)), "source": src})
     t = pd.DataFrame(rows)
     fig = go.Figure(go.Bar(x=t.contribution, y=t.feature, orientation="h",
-                           marker_color=["#2a9d8f" if g == "landing" else "#e9c46a" for g in t.group],
+                           marker_color=[CYAN if g == "landing" else ORANGE for g in t.group],
                            hovertemplate="%{y}: %{x:.1f} pts<extra></extra>"))
-    fig.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), xaxis_title="points contributed to group score (teal = landing, gold = resource)",
+    fig.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), xaxis_title="points contributed to group score (cyan = landing, orange = resource)",
                       yaxis=dict(autorange="reversed"))
-    st.plotly_chart(fig, **_STRETCH)
+    st.plotly_chart(style_fig(fig), **_STRETCH)
     show = t.drop(columns=["contribution", "group"]).round(3)
     show["real data"] = show["real data"].map({True: "real", False: "SYNTHETIC / none"})
     st.dataframe(show, **_STRETCH, hide_index=True)

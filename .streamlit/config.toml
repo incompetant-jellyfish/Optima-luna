@@ -5,3 +5,30 @@ headless = true
 
 [browser]
 gatherUsageStats = false
+
+# "Lunar ops console" theme: near-black, hard edges, signal-orange accents.
+[theme]
+base = "dark"
+primaryColor = "#FF5A1F"
+backgroundColor = "#04060A"
+secondaryBackgroundColor = "#0B1017"
+textColor = "#D6E2EA"
+borderColor = "#1F2C38"
+dataframeBorderColor = "#1F2C38"
+dataframeHeaderBackgroundColor = "#0F1620"
+dataframeHeaderTextColor = "#FF5A1F"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "none"
+buttonRadius = "none"
+linkColor = "#00E5FF"
+font = "'Chakra Petch':https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap"
+headingFont = "Orbitron:https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
+codeFont = "'Share Tech Mono':https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
+metricValueFontWeight = 600
+chartCategoricalColors = ["#FF5A1F", "#00E5FF", "#39FF88", "#E0245E", "#8A5CFF", "#FFD23F"]
+
+[theme.sidebar]
+backgroundColor = "#070B11"
+secondaryBackgroundColor = "#0E141C"
+borderColor = "#FF5A1F"
