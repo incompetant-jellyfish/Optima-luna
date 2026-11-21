@@ -100,3 +100,20 @@ def test_features_version_labels():
     assert features_version({}) == "v0-synthetic"
     assert features_version({"slope_mean": 1}) == "v1-lola"
     assert features_version({"slope_mean": 1, "temp_max": 1}) == "v2-lola-diviner"
+
+
+def test_file_scale_factor_applied(tmp_path):
+    """NASA AVGVISIB stores int16 DN with scale 0.00004 (DN 25000 = fully visible)."""
+    from src.ingest.lola import _illum_scale
+    path = tmp_path / "avgvisib.tif"
+    data = np.tile(np.array([0, 15000], dtype="int16"), (30, 15))      # 0 and 0.6 visible
+    with rasterio.open(path, "w", driver="GTiff", height=30, width=30, count=1, dtype="int16",
+                       crs=SPEC.crs, transform=from_origin(-3000.0, 3000.0, 100.0, 100.0),
+                       nodata=-32768) as dst:
+        dst.write(data, 1)
+        dst.scales = (4e-5,)
+    assert _illum_scale(path) == 1.0                    # file scale used, no percent guess
+    frac = resample_to_grid(path, valid_range=(0, 1), spec=SPEC)
+    inner = np.isfinite(frac)
+    assert inner.sum() == 9
+    assert np.allclose(frac[inner], 0.30, atol=1e-6)

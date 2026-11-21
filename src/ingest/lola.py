@@ -114,8 +114,15 @@ def dem_slope_stats(path: str | Path, spec: GridSpec | None = None,
 
 
 def _illum_scale(path: str | Path) -> float:
-    """1.0 for fraction maps, 0.01 for percent maps (decided from a sample)."""
+    """Extra factor to turn the map into a 0–1 fraction.
+
+    If the file declares its own scale (NASA PGDA AVGVISIB: DN × 0.00004, read by
+    resample_to_grid), no extra factor is needed. Otherwise: 0.01 for percent maps,
+    1.0 for fraction maps, decided from a sample.
+    """
     with rasterio.open(path) as src:
+        if src.scales[0] != 1.0 or src.offsets[0] != 0.0:
+            return 1.0
         sample = src.read(1, out_shape=(1, min(512, src.height), min(512, src.width))).astype(float)
         if src.nodata is not None:
             sample[sample == src.nodata] = np.nan
