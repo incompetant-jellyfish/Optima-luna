@@ -59,7 +59,7 @@ def validate_reference_sites(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=ROOT / "data/processed/scored_features.parquet")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/reference_validation.csv")
+    parser.add_argument("--output", type=Path, default=ROOT / "results/validation.csv")
     parser.add_argument("--score-column", default="landing_score")
     parser.add_argument("--top-k", type=int, default=10)
     args = parser.parse_args()

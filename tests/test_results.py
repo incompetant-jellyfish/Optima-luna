@@ -51,3 +51,17 @@ def test_validation_points_drops_outside_grid_and_formats_hover():
     out = validation_points(v, None, R, -80)
     assert list(out.name) == ["Shackleton rim"]            # 69S is outside 80-90S
     assert "rank 12, in top-10: no" in out.hover[0]
+
+def test_validation_points_reads_validate_py_output():
+    """Columns exactly as src/validate.py writes results/validation.csv."""
+    val = pd.DataFrame({
+        "reference": ["shackleton_rim_r04", "malapert_massif_r23"],
+        "reference_lat_deg": [-89.7668, -85.9948], "reference_lon_east_deg": [-171.87, -0.23578],
+        "nearest_cell_id": [190623, 111934], "nearest_cell_lat_deg": [-89.75, -85.99],
+        "nearest_cell_lon_deg": [-168.7, -0.24], "score_column": ["landing_score"] * 2,
+        "score": [0.5, 0.7], "rank": [265619, 53790], "in_top_k": [False, True], "top_k": [10, 10],
+    })
+    pts = validation_points(val, None, 1737400.0, -80.0)
+    assert list(pts.name) == ["shackleton_rim_r04", "malapert_massif_r23"]
+    assert list(pts.in_top) == [False, True] and list(pts.k) == [10, 10]
+    assert pts[["x", "y"]].notna().all().all()

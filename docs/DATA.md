@@ -14,9 +14,9 @@ Raw downloads go in `data/raw/<layer>/`; processed 1 km products go in `data/pro
 
 | Layer | Product | Archive | Status |
 |---|---|---|---|
-| Elevation → slope, roughness, Earth visibility | LOLA south pole DEM, 20 m/px, 80–90°S | NASA PGDA, https://pgda.gsfc.nasa.gov/products/90 | TODO download |
-| Illumination | LOLA polar illumination maps (Mazarico et al. 2011, Icarus 211) | PDS LOLA node, https://imbrium.mit.edu/BROWSE/EXTRAS/ILLUMINATION | TODO download |
-| Temperature, cold traps | Diviner Polar Resource Product (annual mean / max temperature) | PDS Geosciences Node | TODO download |
+| Elevation → slope, roughness | LOLA south pole DEM `LDEM_80S_40MPP_ADJ.TIF`, 40 m/px, 80–90°S (20 m version too slow to fetch) | NASA PGDA, https://pgda.gsfc.nasa.gov/products/90 | downloading |
+| Illumination, permanent shadow, Earth visibility | LOLA `AVGVISIB_75S_120M_201608` (+ `_EARTH`, `LPSR_75S_120M_201608`), 120 m/px (Mazarico et al. 2011, Icarus 211) | NASA PGDA, https://pgda.gsfc.nasa.gov/products/69 | illumination ingested; PSR / Earth downloading |
+| Temperature, cold traps | Diviner Polar Resource Product (annual mean / max temperature) | PDS Geosciences Node (`dlre_prp_south.tab`, 605 MB table) | TODO: download + table→grid ingest |
 | Ice signature (CPR) | Chandrayaan-2 DFSAR Level-3C polar mosaics | ISRO ISSDC PRADAN, https://pradan.issdc.gov.in/ch2 (registration) | TODO |
 | Hydration | Chandrayaan-2 IIRS | ISRO ISSDC PRADAN (registration) | TODO |
 | Thermal check point | Chandrayaan-3 ChaSTE | ISRO ISSDC PRADAN, https://pradan.issdc.gov.in/ch3 | TODO: confirm ChaSTE files are listed |
@@ -49,3 +49,6 @@ The output's `features_version` column says what's real: `v0-synthetic`, `v1-lol
 
 If a layer is missing, `src/synth.py` fills it with synthetic values. Synthetic values
 have `<feature>_cov = False`, and every output that uses them is labelled **SYNTHETIC**.
+
+Download everything with `python3 scripts/download_data.py` (resumable; parallel connections
+because NASA PGDA throttles each one to ~15 KB/s). Sources are logged to `data/raw/SOURCES.txt`.
