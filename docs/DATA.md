@@ -27,8 +27,23 @@ them from `data/raw/`. We never scrape or bypass authentication.
 
 ## Resampling rule
 
-TODO (P1): document how each layer is brought onto the 1 km grid, e.g. mean slope and
-max slope of the 20 m pixels inside each cell, area-weighted mean for coarser layers.
+Every layer ends up as one value per 1 km cell (`data/processed/layers/<feature>.parquet`).
+
+| Feature | Rule | Code |
+|---|---|---|
+| `slope_mean`, `slope_max`, `roughness` | From the 20 m LOLA DEM: slope per pixel = atan(\|∇z\|) using central differences; then per cell (50 × 50 pixels) the **mean**, **max** and **standard deviation** of pixel slopes. The DEM is read in 1 km-aligned bands with a 1-pixel halo, so it's never loaded whole (~30 s, ~0.6 GB RAM for 80–90°S). Pixels that only partly fill a cell at the DEM edge are dropped. | `src/ingest/lola.py` |
+| `illum_frac` | LOLA average-illumination map, **area-weighted mean** per cell (GDAL average resampling). Percent maps are converted to fractions. | `src/ingest/lola.py` |
+| `psr_frac` | **Fraction of the cell's pixels** whose average illumination is 0 (permanently shadowed). | `src/ingest/lola.py` |
+| `temp_mean`, `temp_max` | Diviner PRP rasters, **area-weighted mean** per cell; values outside 20–450 K are treated as no-data. | `src/ingest/diviner.py` |
+| everything else | No real layer in v1, so filled from `src/synth.py` with `_cov = False`. | `src/features.py` |
+
+Requirement: the DEM must be in the grid's south polar stereographic projection (the
+PGDA products are). This is checked numerically, so the same projection written a
+different way is accepted. Other layers can be in any CRS GDAL reads; they are warped.
+
+File paths go in `config.yaml → ingest`. Then: `make ingest && make features`.
+The output's `features_version` column says what's real: `v0-synthetic`, `v1-lola` or
+`v2-lola-diviner`.
 
 ## Synthetic data
 

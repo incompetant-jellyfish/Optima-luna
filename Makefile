@@ -7,7 +7,7 @@ NIX_EXPAT := $(shell nix-build '<nixpkgs>' -A expat --no-out-link 2>/dev/null)
 export LD_LIBRARY_PATH := $(NIX_LD_LIBRARY_PATH):$(NIX_EXPAT)/lib:$(LD_LIBRARY_PATH)
 endif
 
-.PHONY: setup test grid run
+.PHONY: setup test grid run ingest features scores
 
 setup:
 	python3 -m venv .venv
@@ -21,3 +21,13 @@ grid:
 
 run:
 	.venv/bin/streamlit run app/main.py
+
+ingest:
+	$(PY) -m src.ingest.lola
+	$(PY) -m src.ingest.diviner
+
+features:
+	$(PY) -m src.features
+
+scores:
+	$(PY) -m src.scoring

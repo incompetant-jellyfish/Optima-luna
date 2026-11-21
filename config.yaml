@@ -64,3 +64,12 @@ paths:
   raw: data/raw
   processed: data/processed
   models: models
+
+# ---- Ingest: real data files (relative to repo root; data/ is git-ignored) ----------
+# Fill in the exact file names once P3's downloads land. Leave null if not available:
+# that layer then stays SYNTHETIC (and is flagged _cov = False).
+ingest:
+  lola_dem: null          # e.g. data/raw/lola/<PGDA 80–90°S 20 m/px DEM>.tif
+  lola_illum: null        # e.g. data/raw/lola_illum/<south polar average illumination>.tif / .img
+  diviner_tmean: null     # e.g. data/raw/diviner/<PRP annual mean temperature>
+  diviner_tmax: null      # e.g. data/raw/diviner/<PRP annual max temperature>
