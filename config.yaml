@@ -69,8 +69,8 @@ paths:
 # Fill in the exact file names once P3's downloads land. Leave null if not available:
 # that layer then stays SYNTHETIC (and is flagged _cov = False).
 ingest:
-  lola_dem: null          # e.g. data/raw/lola/<PGDA 80–90°S 20 m/px DEM>.tif
-  lola_illum: null        # e.g. data/raw/lola_illum/<south polar average illumination>.tif / .img
+  lola_dem: data/raw/lola/LDEM_80S_40MPP_ADJ.TIF   # NASA PGDA, 40 m/px, 80–90°S (20 m is 2.5 GB: too slow)
+  lola_illum: data/raw/lola_illum/AVGVISIB_75S_120M_201608.TIF   # NASA PGDA avg solar visibility, 120 m/px
   diviner_tmean: null     # e.g. data/raw/diviner/<PRP annual mean temperature>
   diviner_tmax: null      # e.g. data/raw/diviner/<PRP annual max temperature>
 
