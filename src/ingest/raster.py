@@ -41,6 +41,8 @@ def resample_to_grid(path: str | Path, *, band: int = 1, scale: float = 1.0,
         data = src.read(band).astype("float64")
         if src.nodata is not None:
             data[data == src.nodata] = np.nan
+        # Apply the file's own scale/offset (e.g. LOLA illumination: DN × 0.00004).
+        data = data * src.scales[band - 1] + src.offsets[band - 1]
         data *= scale
         if valid_range is not None:
             lo, hi = valid_range
