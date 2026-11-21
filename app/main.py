@@ -17,6 +17,7 @@ dataset so the UI can always be demoed. The banner says which mode is active.
 from __future__ import annotations
 
 import inspect
+import json
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -69,24 +71,42 @@ MONO = "'Share Tech Mono', ui-monospace, monospace"
 CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
-.stApp {{
-  background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(217,115,82,.06), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(104,80,173,.10), transparent 60%),
-    {BG};
-}}
-/* faint scanlines over everything, never blocking clicks */
-.stApp::after {{
-  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 999;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.010) 0 1px, transparent 1px 3px);
-}}
-header[data-testid="stHeader"] {{ background: transparent; }}
+/* deep-space gradient on the page root; the star canvas (starfield.js) sits just above it */
+html {{ background:
+    radial-gradient(1100px 700px at 12% -5%, rgba(104,80,173,.48), transparent 62%),
+    radial-gradient(1000px 650px at 100% 35%, rgba(46,70,170,.36), transparent 60%),
+    radial-gradient(900px 600px at 30% 110%, rgba(107,7,51,.30), transparent 60%),
+    linear-gradient(165deg, #140B26 0%, #0C0A1E 45%, #080C1F 100%) fixed; }}
+body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stBottom"] > div,
+header[data-testid="stHeader"] {{ background: transparent !important; }}
+.stElementContainer:has(> iframe[height="0"]) {{ display: none; }}
+/* liquid glass: frosted translucent panel, bright top edge, soft depth */
+[data-testid="stDataFrame"], .stPlotlyChart, [data-testid="stMetric"], [data-testid="stExpander"] details,
+[data-testid="stVerticalBlockBorderWrapper"], [data-testid="stAlert"], .ops-hero {{
+  background: linear-gradient(160deg, rgba(255,255,255,.075), rgba(255,255,255,.02) 45%, rgba(154,134,218,.05)) !important;
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.11) !important; border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(255,255,255,.04),
+              0 12px 40px rgba(4,2,12,.45);
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }}
+[data-testid="stMetric"]:hover, .stPlotlyChart:hover, [data-testid="stDataFrame"]:hover {{
+  border-color: rgba(235,165,136,.35) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 16px 48px rgba(4,2,12,.55), 0 0 24px rgba(154,134,218,.12); }}
+[data-testid="stMetric"]:hover {{ transform: translateY(-2px); }}
+[data-testid="stDataFrame"] {{ overflow: hidden; padding: 4px; }}
+/* the moon map floats in space: no box, just a soft halo behind the disc */
+.st-key-moonmap .stPlotlyChart {{ background: radial-gradient(circle at 50% 52%, rgba(154,134,218,.16), rgba(104,80,173,.05) 38%, transparent 62%) !important;
+  backdrop-filter: none; -webkit-backdrop-filter: none; border-color: transparent !important; box-shadow: none; }}
+.st-key-moonmap .stPlotlyChart:hover {{ box-shadow: none; border-color: transparent !important; }}
+/* gentle arrival so the page doesn't just snap in */
+@keyframes luna-rise {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: none; }} }}
+.ops-hero, .stPlotlyChart, [data-testid="stDataFrame"], [data-testid="stMetric"] {{ animation: luna-rise .6s ease-out both; }}
+@media (prefers-reduced-motion: reduce) {{ * {{ animation: none !important; transition: none !important; }} }}
 h1, h2, h3 {{ text-transform: uppercase; letter-spacing: .12em; }}
 h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {ORANGE};
       padding-left: .6rem !important; }}
 /* hero header */
-.ops-hero {{ border: 1px solid {BORDER}; border-left: 4px solid {ORANGE}; padding: 14px 18px 12px;
-  background: linear-gradient(90deg, rgba(217,115,82,.10), rgba(45,16,54,.55) 40%); position: relative; }}
+.ops-hero {{ padding: 16px 20px 12px; position: relative; }}
 .ops-kicker {{ font-family: {MONO}; color: {ORANGE}; font-size: .78rem; letter-spacing: .25em; }}
 .ops-title {{ font-family: Orbitron, sans-serif; font-weight: 900; font-size: clamp(1.4rem, 3vw, 2.3rem);
   letter-spacing: .08em; text-transform: uppercase; color: {TEXT}; line-height: 1.15; margin: 4px 0; }}
@@ -95,11 +115,7 @@ h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {OR
 .ops-hazard {{ height: 6px; margin: 10px 0 4px;
   background: repeating-linear-gradient(-45deg, {ORANGE} 0 10px, {BG} 10px 20px); opacity: .55; }}
 /* metric tiles: HUD panel with corner brackets */
-[data-testid="stMetric"] {{ background: {PANEL}; border: 1px solid {BORDER}; padding: 10px 12px; position: relative; }}
-[data-testid="stMetric"]::before, [data-testid="stMetric"]::after {{ content: ""; position: absolute;
-  width: 10px; height: 10px; border-color: {ORANGE}; border-style: solid; }}
-[data-testid="stMetric"]::before {{ top: -1px; left: -1px; border-width: 2px 0 0 2px; }}
-[data-testid="stMetric"]::after {{ bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }}
+[data-testid="stMetric"] {{ padding: 12px 14px; position: relative; }}
 [data-testid="stMetricLabel"] p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em;
   font-size: .72rem !important; color: {DIM}; }}
 [data-testid="stMetricValue"] {{ font-family: {MONO}; color: {CYAN}; }}
@@ -116,12 +132,10 @@ h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {OR
 .ops-legend b {{ color: {TEXT}; font-weight: 400; }}
 /* map toolbar: always visible, readable */
 .modebar {{ opacity: 1 !important; }}
-.modebar-group {{ background: {PANEL} !important; border: 1px solid {BORDER}; padding: 2px !important; }}
-/* panels, tables, alerts: hard edges and a lit top rule */
-[data-testid="stExpander"] details, [data-testid="stDataFrame"], .stPlotlyChart {{
-  border: 1px solid {BORDER}; box-shadow: inset 0 1px 0 rgba(217,115,82,.28); }}
+.modebar-group {{ background: rgba(28,15,36,.55) !important; backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 2px !important; }}
 [data-testid="stExpander"] summary p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em; }}
-[data-testid="stAlert"] {{ font-family: {MONO}; letter-spacing: .03em; border-left: 4px solid currentColor; }}
+[data-testid="stAlert"] {{ font-family: {MONO}; letter-spacing: .03em; }}
 .stCaption, [data-testid="stCaptionContainer"] {{ font-family: {MONO}; color: {DIM} !important; letter-spacing: .04em; }}
 button[kind] {{ text-transform: uppercase; letter-spacing: .14em; font-family: {MONO}; }}
 hr {{ border-color: {BORDER} !important; }}
@@ -131,11 +145,14 @@ hr {{ border-color: {BORDER} !important; }}
 
 def style_fig(fig: go.Figure) -> go.Figure:
     """Plotly in the console look: transparent paper, mono labels, dim grid."""
-    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor=BG,
+    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                       font=dict(family=MONO, color=DIM, size=12),
-                      hoverlabel=dict(bgcolor=PANEL, bordercolor=ORANGE, font=dict(family=MONO, color=TEXT)))
-    fig.update_xaxes(gridcolor="#24132C", zerolinecolor=BORDER, linecolor=BORDER)
-    fig.update_yaxes(gridcolor="#24132C", zerolinecolor=BORDER, linecolor=BORDER)
+                      hoverlabel=dict(bgcolor="rgba(28,15,36,.88)", bordercolor="rgba(235,165,136,.6)",
+                                      font=dict(family=MONO, color=TEXT)))
+    fig.update_xaxes(gridcolor="rgba(255,255,255,.06)", zerolinecolor="rgba(255,255,255,.1)",
+                     linecolor="rgba(255,255,255,.1)")
+    fig.update_yaxes(gridcolor="rgba(255,255,255,.06)", zerolinecolor="rgba(255,255,255,.1)",
+                     linecolor="rgba(255,255,255,.1)")
     return fig
 
 
@@ -290,7 +307,7 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
     custom = np.dstack([lat, lon, grids["l"], grids["s"], grids["k"]])
     fig = go.Figure(go.Heatmap(
         z=grids["v"], x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis", zmin=0, zmax=100,
-        customdata=custom, name="score",
+        customdata=custom, name="score", opacity=0.93,
         colorbar=dict(title=dict(text=f"{label.upper()}<br>0–100", side="top"), outlinewidth=0,
                       thickness=14, len=0.68, y=0.4, yanchor="middle"),
         hovertemplate=("<b>lat %{customdata[0]:.2f}°, lon %{customdata[1]:.1f}°</b><br>"
@@ -307,6 +324,10 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
         fig.add_annotation(x=lx / 1000, y=ly / 1000, text=f"{abs(la)}°S", showarrow=False,
                            font=dict(family=MONO, size=11, color=TEXT), bgcolor="rgba(18,10,23,.65)")
     r80 = abs(lonlat_to_xy(90.0, -80)[0]) / 1000
+    for w, a in ((22, .05), (12, .09), (5, .16), (1.5, .45)):   # soft glow around the 80°S edge
+        fig.add_trace(go.Scatter(x=r80 * 1.01 * np.sin(ring), y=r80 * 1.01 * np.cos(ring), mode="lines",
+                                 hoverinfo="skip", showlegend=False,
+                                 line=dict(color=f"rgba(190,175,255,{a})", width=w)))
     for lo in range(0, 360, 30):
         a = np.radians(lo)
         fig.add_trace(go.Scatter(x=[0, r80 * np.sin(a)], y=[0, r80 * np.cos(a)], mode="lines", hoverinfo="skip",
@@ -339,9 +360,8 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
         height=940, margin=dict(l=10, r=10, t=40, b=10),
         legend=dict(orientation="h", x=0, y=1.04, bgcolor="rgba(0,0,0,0)", font=dict(family=MONO, size=12)),
         modebar=dict(bgcolor=PANEL, color=TEXT, activecolor=ORANGE, orientation="v"),
-        xaxis=dict(title="x (km from pole)", range=[-lim, lim], showgrid=False, zeroline=False),
-        yaxis=dict(title="y (km from pole)", range=[-lim, lim], showgrid=False, zeroline=False,
-                   scaleanchor="x", scaleratio=1))
+        xaxis=dict(range=[-lim, lim], visible=False),
+        yaxis=dict(range=[-lim, lim], visible=False, scaleanchor="x", scaleratio=1))
     return style_fig(fig)
 
 
@@ -350,10 +370,24 @@ def confidence_label(p: float) -> str:
 
 
 # --------------------------------------------------------------------------- app
+STARFIELD_JS = (Path(__file__).parent / "starfield.js").read_text(encoding="utf-8")
+
+
+def starfield() -> None:
+    """Run starfield.js in the parent page (a zero-height component; Streamlit's component
+    iframe is same-origin). The script tag lives in the page itself, so it survives reruns."""
+    components.html(
+        "<script>const d = window.parent.document;"
+        "if (!d.getElementById('luna-stars-js')) {"
+        " const s = d.createElement('script'); s.id = 'luna-stars-js';"
+        f" s.textContent = {json.dumps(STARFIELD_JS)}; d.head.appendChild(s); }}</script>", height=0)
+
+
 def main() -> None:
     st.set_page_config(page_title="Lunar South Pole Site Ranker", layout="wide", page_icon="🌘",
                        initial_sidebar_state="collapsed")
     st.markdown(CSS, unsafe_allow_html=True)
+    starfield()
     cfg = load_config()
     feats, is_synth = load_features()
     cell_m = cfg["grid"]["cell_size_m"]
@@ -425,13 +459,13 @@ def main() -> None:
     val_pts = results_io.validation_points(res["validation"], feats, cfg["moon"]["radius_m"],
                                            cfg["grid"]["lat_limit_deg"])
     st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
-                    config=MAP_TOOLS, **_STRETCH)
+                    config=MAP_TOOLS, key="moonmap", **_STRETCH)
     st.markdown(
         f"""<div class="ops-legend">
         <b>How to read it:</b> polar stereographic view of 80°S–90°S, the same projection as NASA’s LOLA maps;
         the pole is at the centre, dotted rings mark latitude every 2°, spokes mark longitude every 30°.
         Each pixel is the mean {view_name.lower()} score of a 2 km block (0 = poor, 100 = best).
-        {"Black gaps are cells that fail a hard landing rule (steep crater walls)." if hide else ""}<br>
+        {"Gaps where space shows through are cells that fail a hard landing rule (steep crater walls)." if hide else ""}<br>
         <b>Map tools (top right):</b> zoom box · pan · zoom in / out · reset view (house) · save as PNG.
         Scroll to zoom, double-click to reset. Hover any pixel for its latitude, longitude and all three scores.
         </div>""", unsafe_allow_html=True)
