@@ -53,8 +53,11 @@ def rank_pairs(
     for col in (landing_score, resource_score, "slope_mean", "x", "y"):
         frame[col] = pd.to_numeric(frame[col], errors="coerce")
     valid_landing = frame[landing_score].notna() & frame[["x", "y", "slope_mean"]].notna().all(axis=1)
+    if "eligible" in frame.columns:
+        valid_landing &= frame["eligible"].fillna(False).astype(bool)
     valid_resource = frame[resource_score].notna() & frame[["x", "y"]].notna().all(axis=1)
     land = frame.loc[valid_landing].copy()
+    land = land.sort_values(landing_score, ascending=False).reset_index(drop=True)
     resource = frame.loc[valid_resource].copy()
     if land.empty or resource.empty:
         return pd.DataFrame(columns=["landing_cell_id", "ice_cell_id", "distance_km", "route_cost", "landing_score", "resource_score", "confidence", "combined_score"])
@@ -65,6 +68,16 @@ def rank_pairs(
     # hundreds of thousands of Python -> C transitions on the full 290k-cell grid.
     nearby_by_landing = tree.query_ball_point(land[["x", "y"]].to_numpy(float), r=radius_m * 1.02)
     for (_, site), nearby_indices in zip(land.iterrows(), nearby_by_landing):
+        if len(rows) >= limit:
+            cutoff = sorted(
+                (r["combined_score"] for r in rows),
+                reverse=True
+            )[limit - 1]
+
+            upper_bound = 0.5 * (float(site[landing_score]) + 1.0)
+
+            if upper_bound <= cutoff:
+                break
         if not nearby_indices:
             continue
         candidates = resource.iloc[nearby_indices].copy()

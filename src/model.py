@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from src.scoring import score
 import joblib
 import numpy as np
 import pandas as pd
@@ -24,53 +25,21 @@ TARGETS = ("landing_score", "resource_score")
 METADATA = {"cell_id", "row", "col", "x", "y", "lat", "lon", "true_area_km2", "data_provenance", "synthetic_seed"}
 
 
-def _weighted_score(frame: pd.DataFrame, definitions: dict) -> tuple[pd.Series, pd.Series]:
-    """Compute weighted mean over present finite features and available-weight confidence."""
-    numerator = np.zeros(len(frame), dtype=float)
-    denominator = np.zeros(len(frame), dtype=float)
-    total_weight = sum(float(spec["weight"]) for spec in definitions.values())
-    for name, spec in definitions.items():
-        if name not in frame:
-            continue
-        values = pd.to_numeric(frame[name], errors="coerce").to_numpy(float)
-        finite = np.isfinite(values)
-        if not finite.any():
-            continue
-        lo, hi = np.nanpercentile(values[finite], [2, 98])
-        norm = np.clip((values - lo) / max(hi - lo, 1e-9), 0, 1)
-        if spec["direction"] == "lower":
-            norm = 1 - norm
-        elif spec["direction"] != "higher":
-            raise ValueError(f"Unknown direction {spec['direction']!r} for {name}")
-        weight = float(spec["weight"])
-        numerator[finite] += norm[finite] * weight
-        denominator[finite] += weight
-    score = np.divide(numerator, denominator, out=np.full(len(frame), np.nan), where=denominator > 0)
-    # Synthetic values may train the demo model, but must never count as real-data coverage.
-    coverage_weight = np.zeros(len(frame), dtype=float)
-    for name, spec in definitions.items():
-        cov_col = f"{name}_cov"
-        if name not in frame:
-            continue
-        finite = np.isfinite(pd.to_numeric(frame[name], errors="coerce").to_numpy(float))
-        if cov_col in frame.columns:
-            observed = frame[cov_col].fillna(False).astype(bool).to_numpy() & finite
-        else:
-            # Legacy inputs without explicit coverage flags are treated as present data.
-            observed = finite
-        coverage_weight[observed] += float(spec["weight"])
-    confidence = coverage_weight / total_weight if total_weight else np.zeros(len(frame))
-    return pd.Series(score, index=frame.index), pd.Series(confidence, index=frame.index)
-
-
 def make_pseudo_labels(frame: pd.DataFrame, cfg: dict | None = None) -> pd.DataFrame:
-    """Create baseline multi-criteria targets and coverage confidence."""
-    cfg = cfg or load_config()
+    """Create pseudo-labels using the canonical P1 scoring implementation."""
     result = frame.copy()
-    for target, key in (("landing_score", "landing"), ("resource_score", "resource")):
-        score, confidence = _weighted_score(result, cfg["scoring"][key])
-        result[target] = score
-        result[f"{target.replace('_score', '')}_confidence"] = confidence
+    scored = score(frame, cfg=cfg)
+
+    for column in (
+        "landing_score",
+        "resource_score",
+        "landing_confidence",
+        "resource_confidence",
+        "confidence",
+        "eligible",
+    ):
+        result[column] = scored[column]
+
     return result
 
 
@@ -88,10 +57,14 @@ def spatial_block_groups(frame: pd.DataFrame, block_size_m: float = 10_000) -> n
 
 
 def _feature_columns(frame: pd.DataFrame) -> list[str]:
-    return [c for c in frame.select_dtypes(include=[np.number]).columns
-            if c not in METADATA and c not in TARGETS and not c.endswith("_confidence")
-            and not c.endswith("_cov")]
-
+    return [
+        c for c in frame.select_dtypes(include=[np.number]).columns
+        if c not in METADATA
+        and c not in TARGETS
+        and c != "confidence"
+        and not c.endswith("_confidence")
+        and not c.endswith("_cov")
+    ]
 
 def _mask_features(X: pd.DataFrame, rng: np.random.Generator, rate: float) -> pd.DataFrame:
     """Randomly hide feature cells during training to simulate patchy layer availability."""
