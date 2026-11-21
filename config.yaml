@@ -73,3 +73,18 @@ ingest:
   lola_illum: null        # e.g. data/raw/lola_illum/<south polar average illumination>.tif / .img
   diviner_tmean: null     # e.g. data/raw/diviner/<PRP annual mean temperature>
   diviner_tmax: null      # e.g. data/raw/diviner/<PRP annual max temperature>
+
+validation:
+  # NASA ACD-50044 Rev A, Appendix A2.1, Table A2-2; representative points,
+  # not landing ellipses or certified sites.
+  reference_sites:
+    shackleton_rim_r04:
+      lat_deg: -89.7668
+      lon_east_deg: -171.87
+      description: "Shackleton Rim representative point (R04 / Site04)"
+      source: "NASA Lunar Surface Data Book ACD-50044 Rev A, Appendix A2.1, Table A2-2"
+    malapert_massif_r23:
+      lat_deg: -85.9948
+      lon_east_deg: -0.23578
+      description: "Malapert Massif representative point (R23 / Site23)"
+      source: "NASA Lunar Surface Data Book ACD-50044 Rev A, Appendix A2.1, Table A2-2"

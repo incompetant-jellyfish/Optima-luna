@@ -1,0 +1,3 @@
+reference,description,source,reference_lat_deg,reference_lon_east_deg,nearest_cell_id,nearest_cell_lat_deg,nearest_cell_lon_deg,offset_to_cell_centre_m,score_column,score,rank,in_top_k,top_k
+shackleton_rim_r04,Shackleton Rim representative point (R04 / Site04),"NASA Lunar Surface Data Book ACD-50044 Rev A, Appendix A2.1, Table A2-2",-89.7668,-171.87,190623,-89.747768079352,-168.6900675259798,706.8365792501347,landing_score,0.5030208826065063,265619,False,10
+malapert_massif_r23,Malapert Massif representative point (R23 / Site23),"NASA Lunar Surface Data Book ACD-50044 Rev A, Appendix A2.1, Table A2-2",-85.9948,-0.23578,111934,-85.99478468356075,-0.2357837698766106,0.4650823178348632,landing_score,0.7309675812721252,53790,False,10

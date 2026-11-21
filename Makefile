@@ -7,7 +7,7 @@ NIX_EXPAT := $(shell nix-build '<nixpkgs>' -A expat --no-out-link 2>/dev/null)
 export LD_LIBRARY_PATH := $(NIX_LD_LIBRARY_PATH):$(NIX_EXPAT)/lib:$(LD_LIBRARY_PATH)
 endif
 
-.PHONY: setup test grid run ingest features scores
+.PHONY: setup test grid run ingest features scores synth model pairs validate
 
 setup:
 	python3 -m venv .venv
@@ -31,3 +31,15 @@ features:
 
 scores:
 	$(PY) -m src.scoring
+
+synth:
+	$(PY) -m src.synth
+
+model:
+	$(PY) -m src.model
+
+pairs:
+	$(PY) -m src.pairing
+
+validate:
+	$(PY) -m src.validate
