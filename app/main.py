@@ -58,20 +58,24 @@ VIEWS = {"Combined": "combined", "Landing safety": "landing", "Resource value": 
 
 # ---- look: "lunar ops console". Colours/fonts/corners live in .streamlit/config.toml;
 # this adds what the theme can't: HUD brackets, scanlines, hazard stripes, mono numbers.
-# ONE palette, shared with .streamlit/config.toml. Soft, desaturated: amber for
-# accents/controls, ice teal for data values, sage for status, muted red for alerts.
-PALETTE = {'bg': '#07090C', 'panel': '#0E1318', 'panel2': '#141B22', 'border': '#232D36', 'text': '#D3DBE0', 'dim': '#7C8B95', 'accent': '#D08A57', 'accent_soft': '#E2B48E', 'data': '#7DB4BF', 'ok': '#93B98F', 'alert': '#C46A60'}
+# ONE palette, shared with .streamlit/config.toml. From the team's reference swatches:
+# Fae Fruit (coral accent), Opal (violet data), Blood Bargain (crimson alerts),
+# Thorn Crown (plum panels).
+PALETTE = {'bg': '#120A17', 'panel': '#1C0F24', 'panel2': '#2D1036', 'border': '#3B2048', 'text': '#EDE3EA', 'dim': '#9C8AA6', 'accent': '#D97352', 'accent_soft': '#EBA588', 'data': '#9A86DA', 'ok': '#C9A6E0', 'alert': '#C2476B'}
 ORANGE, CYAN, GREEN, RED, DIM = (PALETTE["accent"], PALETTE["data"], PALETTE["ok"],
                                  PALETTE["alert"], PALETTE["dim"])
 BG, PANEL, BORDER, TEXT = PALETTE["bg"], PALETTE["panel"], PALETTE["border"], PALETTE["text"]
+# Map scale built from the swatches, monotonic in lightness (dark plum = poor, coral/peach = good).
+MAP_SCALE = [[0.0, "#1A0A20"], [0.2, "#2D1036"], [0.4, "#6B0733"], [0.6, "#6850AD"],
+             [0.8, "#D97352"], [1.0, "#F6D2B8"]]
 MONO = "'Share Tech Mono', ui-monospace, monospace"
 CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@500;700;900&display=swap');
 .stApp {{
   background:
-    radial-gradient(1200px 600px at 85% -10%, rgba(208,138,87,.045), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(125,180,191,.035), transparent 60%),
+    radial-gradient(1200px 600px at 85% -10%, rgba(217,115,82,.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(104,80,173,.10), transparent 60%),
     {BG};
 }}
 /* faint scanlines over everything, never blocking clicks */
@@ -85,7 +89,7 @@ h3 {{ font-size: 1.05rem !important; color: {ORANGE}; border-left: 3px solid {OR
       padding-left: .6rem !important; }}
 /* hero header */
 .ops-hero {{ border: 1px solid {BORDER}; border-left: 4px solid {ORANGE}; padding: 14px 18px 12px;
-  background: linear-gradient(90deg, rgba(208,138,87,.08), rgba(14,19,24,.6) 40%); position: relative; }}
+  background: linear-gradient(90deg, rgba(217,115,82,.10), rgba(45,16,54,.55) 40%); position: relative; }}
 .ops-kicker {{ font-family: {MONO}; color: {ORANGE}; font-size: .78rem; letter-spacing: .25em; }}
 .ops-title {{ font-family: Orbitron, sans-serif; font-weight: 900; font-size: clamp(1.4rem, 3vw, 2.3rem);
   letter-spacing: .08em; text-transform: uppercase; color: {TEXT}; line-height: 1.15; margin: 4px 0; }}
@@ -107,7 +111,7 @@ section[data-testid="stSidebar"] h2 {{ font-size: .95rem; color: {ORANGE}; }}
 section[data-testid="stSidebar"] label p {{ font-family: {MONO}; font-size: .78rem; letter-spacing: .06em; }}
 /* panels, tables, alerts: hard edges and a lit top rule */
 [data-testid="stExpander"] details, [data-testid="stDataFrame"], .stPlotlyChart {{
-  border: 1px solid {BORDER}; box-shadow: inset 0 1px 0 rgba(208,138,87,.25); }}
+  border: 1px solid {BORDER}; box-shadow: inset 0 1px 0 rgba(217,115,82,.28); }}
 [data-testid="stExpander"] summary p {{ font-family: {MONO}; text-transform: uppercase; letter-spacing: .14em; }}
 [data-testid="stAlert"] {{ font-family: {MONO}; letter-spacing: .03em; border-left: 4px solid currentColor; }}
 .stCaption, [data-testid="stCaptionContainer"] {{ font-family: {MONO}; color: {DIM} !important; letter-spacing: .04em; }}
@@ -122,8 +126,8 @@ def style_fig(fig: go.Figure) -> go.Figure:
     fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor=BG,
                       font=dict(family=MONO, color=DIM, size=12),
                       hoverlabel=dict(bgcolor=PANEL, bordercolor=ORANGE, font=dict(family=MONO, color=TEXT)))
-    fig.update_xaxes(gridcolor="#121920", zerolinecolor=BORDER, linecolor=BORDER)
-    fig.update_yaxes(gridcolor="#121920", zerolinecolor=BORDER, linecolor=BORDER)
+    fig.update_xaxes(gridcolor="#24132C", zerolinecolor=BORDER, linecolor=BORDER)
+    fig.update_yaxes(gridcolor="#24132C", zerolinecolor=BORDER, linecolor=BORDER)
     return fig
 
 
@@ -257,26 +261,26 @@ def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id
     xs = g.groupby("c").x.mean().sort_index(); ys = g.groupby("r").y.mean().sort_index()
     z = np.full((len(ys), len(xs)), np.nan)
     z[ys.index.get_indexer(g.r), xs.index.get_indexer(g.c)] = g.v
-    fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale="Viridis",
+    fig = go.Figure(go.Heatmap(z=z, x=xs.values / 1000, y=ys.values / 1000, colorscale=MAP_SCALE,
                                zmin=0, zmax=100, colorbar=dict(title=label.upper(), outlinewidth=0, thickness=12),
                                hovertemplate="x %{x:.0f} km, y %{y:.0f} km<br>score %{z:.1f}<extra></extra>"))
     if len(top):
         fig.add_trace(go.Scatter(
             x=top.x / 1000, y=top.y / 1000, mode="markers+text", text=[str(i + 1) for i in range(len(top))],
-            textposition="top center", textfont=dict(color=ORANGE, size=12, family=MONO),
-            marker=dict(size=10, symbol="square", color=ORANGE, line=dict(color=BG, width=2)),
+            textposition="top center", textfont=dict(color=TEXT, size=12, family=MONO),
+            marker=dict(size=10, symbol="square", color=BG, line=dict(color=TEXT, width=2)),
             customdata=top.cell_id, hovertemplate="#%{text}  cell %{customdata}<extra></extra>", showlegend=False))
     if val_pts is not None and len(val_pts):
         fig.add_trace(go.Scatter(
             x=val_pts.x / 1000, y=val_pts.y / 1000, mode="markers+text", text=val_pts.name,
-            textposition="bottom center", textfont=dict(color=TEXT, size=11, family=MONO),
-            marker=dict(size=13, symbol="diamond", color=TEXT, line=dict(color=BG, width=2)),
+            textposition="bottom center", textfont=dict(color=GREEN, size=11, family=MONO),
+            marker=dict(size=13, symbol="diamond", color=GREEN, line=dict(color=BG, width=2)),
             hovertext=val_pts.hover, hovertemplate="%{hovertext}<extra>NASA reference site</extra>",
             showlegend=False))
     if sel_id is not None and (df.cell_id == sel_id).any():
         s = df[df.cell_id == sel_id].iloc[0]
         fig.add_trace(go.Scatter(x=[s.x / 1000], y=[s.y / 1000], mode="markers", showlegend=False,
-                                 marker=dict(size=22, symbol="square-open", color=GREEN, line=dict(color=GREEN, width=3))))
+                                 marker=dict(size=24, symbol="square-open", color=TEXT, line=dict(color=TEXT, width=3))))
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=10, b=0), yaxis=dict(scaleanchor="x", title="km (S-polar stereographic)"),
                       xaxis=dict(title="km"))
     return style_fig(fig)
@@ -357,8 +361,8 @@ def main() -> None:
                                                cfg["grid"]["lat_limit_deg"])
         st.plotly_chart(heatmap(df, view, cell_m, top, st.session_state.get("site_pick"), view_name, val_pts),
                         **_STRETCH)
-        st.caption("Amber squares = top-N sites (min 5 km apart). White diamonds = NASA reference sites "
-                   "(rank from results/validation.csv). Sage box = selected site. Map binned to ~5 km.")
+        st.caption("Dark squares = top-N sites (min 5 km apart). Lilac diamonds = NASA reference sites "
+                   "(rank from results/validation.csv). White box = selected site. Map binned to ~5 km.")
 
     with right:
         st.subheader(f"Top {len(top)} - {view_name}")
@@ -427,7 +431,7 @@ def site_card(feats, df, norm, cid, weights, cfg, res) -> None:
     fig.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), xaxis_title="SCORE POINTS",
                       yaxis=dict(autorange="reversed"))
     st.plotly_chart(style_fig(fig), **_STRETCH)
-    st.caption("Points each feature adds to its group score. Teal = landing, amber = resource.")
+    st.caption("Points each feature adds to its group score. Violet = landing, coral = resource.")
     show = t.drop(columns=["contribution", "group"]).round(3)
     show["real data"] = show["real data"].map({True: "real", False: "SYNTHETIC / none"})
     st.dataframe(show, **_STRETCH, hide_index=True)

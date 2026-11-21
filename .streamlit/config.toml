@@ -6,52 +6,56 @@ headless = true
 [browser]
 gatherUsageStats = false
 
-# "Lunar ops console" theme. ONE palette, shared with app/main.py (PALETTE):
-#   bg #07090C  panel #0E1318  border #232D36  text #D3DBE0  dim #7C8B95
-#   accent (amber) #D08A57  data (ice teal) #7DB4BF  ok (sage) #93B98F  alert #C46A60
+# Theme from the team's reference palette: Fae Fruit #D97352, Opal #6850AD,
+# Blood Bargain #6B0733, Thorn Crown #2D1036. ONE palette, shared with app/main.py (PALETTE):
+#   bg #120A17  panel #1C0F24  panel2 #2D1036  border #3B2048  text #EDE3EA  dim #9C8AA6
+#   accent #D97352  data #9A86DA  ok #C9A6E0  alert #C2476B
 [theme]
 base = "dark"
-primaryColor = "#D08A57"
-backgroundColor = "#07090C"
-secondaryBackgroundColor = "#0E1318"
-textColor = "#D3DBE0"
-borderColor = "#232D36"
-dataframeBorderColor = "#232D36"
-dataframeHeaderBackgroundColor = "#141B22"
-dataframeHeaderTextColor = "#E2B48E"
+primaryColor = "#D97352"
+backgroundColor = "#120A17"
+secondaryBackgroundColor = "#1C0F24"
+textColor = "#EDE3EA"
+borderColor = "#3B2048"
+dataframeBorderColor = "#3B2048"
+dataframeHeaderBackgroundColor = "#2D1036"
+dataframeHeaderTextColor = "#EBA588"
 showWidgetBorder = true
 showSidebarBorder = true
 baseRadius = "none"
 buttonRadius = "none"
-linkColor = "#7DB4BF"
-codeTextColor = "#7DB4BF"
-codeBackgroundColor = "#0E1318"
+linkColor = "#9A86DA"
+codeTextColor = "#9A86DA"
+codeBackgroundColor = "#1C0F24"
 # Alert / badge colours mapped onto the same palette (no stock Streamlit hues).
-redColor = "#C46A60"
-redTextColor = "#E0A39B"
-redBackgroundColor = "rgba(196, 106, 96, 0.12)"
-orangeColor = "#D08A57"
-orangeTextColor = "#E2B48E"
-orangeBackgroundColor = "rgba(208, 138, 87, 0.12)"
-yellowColor = "#D08A57"
-yellowTextColor = "#E2B48E"
-yellowBackgroundColor = "rgba(208, 138, 87, 0.10)"
-blueColor = "#7DB4BF"
-blueTextColor = "#A9CDD4"
-blueBackgroundColor = "rgba(125, 180, 191, 0.10)"
-greenColor = "#93B98F"
-greenTextColor = "#B9D3B6"
-greenBackgroundColor = "rgba(147, 185, 143, 0.10)"
-grayColor = "#7C8B95"
-grayTextColor = "#A7B3BA"
-grayBackgroundColor = "rgba(124, 139, 149, 0.10)"
+redColor = "#C2476B"
+redTextColor = "#E58AA4"
+redBackgroundColor = "rgba(107, 7, 51, 0.35)"
+orangeColor = "#D97352"
+orangeTextColor = "#EBA588"
+orangeBackgroundColor = "rgba(217, 115, 82, 0.12)"
+yellowColor = "#D97352"
+yellowTextColor = "#EBA588"
+yellowBackgroundColor = "rgba(217, 115, 82, 0.1)"
+blueColor = "#9A86DA"
+blueTextColor = "#BFB1EA"
+blueBackgroundColor = "rgba(104, 80, 173, 0.18)"
+greenColor = "#C9A6E0"
+greenTextColor = "#DCC5EB"
+greenBackgroundColor = "rgba(201, 166, 224, 0.1)"
+violetColor = "#6850AD"
+violetTextColor = "#BFB1EA"
+violetBackgroundColor = "rgba(104, 80, 173, 0.18)"
+grayColor = "#9C8AA6"
+grayTextColor = "#BBAEC2"
+grayBackgroundColor = "rgba(156, 138, 166, 0.1)"
 font = "'Chakra Petch':https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&display=swap"
 headingFont = "Orbitron:https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap"
 codeFont = "'Share Tech Mono':https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap"
 metricValueFontWeight = 500
-chartCategoricalColors = ["#D08A57", "#7DB4BF", "#93B98F", "#C46A60", "#A99BC9", "#C9B37A"]
+chartCategoricalColors = ["#D97352", "#6850AD", "#C9A6E0", "#C2476B", "#6B0733", "#EBA588"]
 
 [theme.sidebar]
-backgroundColor = "#090C10"
-secondaryBackgroundColor = "#0E1318"
-borderColor = "#232D36"
+backgroundColor = "#0E0712"
+secondaryBackgroundColor = "#1C0F24"
+borderColor = "#3B2048"
