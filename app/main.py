@@ -419,7 +419,7 @@ def site_card(feats, df, norm, cid, weights, cfg, res) -> None:
     fig = go.Figure(go.Bar(x=t.contribution, y=t.feature, orientation="h",
                            marker_color=[CYAN if g == "landing" else ORANGE for g in t.group],
                            hovertemplate="%{y}: %{x:.1f} pts<extra></extra>"))
-    fig.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), xaxis_title="points contributed to group score (cyan = landing, orange = resource)",
+    fig.update_layout(height=320, margin=dict(l=0, r=0, t=20, b=0), xaxis_title="SCORE POINTS · CYAN LANDING · ORANGE RESOURCE",
                       yaxis=dict(autorange="reversed"))
     st.plotly_chart(style_fig(fig), **_STRETCH)
     show = t.drop(columns=["contribution", "group"]).round(3)
