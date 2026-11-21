@@ -7,21 +7,27 @@ Python standard library only (no pip installs). Run from the repo root:
 
 What it does for every file:
   * asks the server how big the file should be, and refuses web pages (HTML);
-  * downloads to NAME.part, resumes if interrupted, retries on network errors;
+  * NASA PGDA throttles each connection to ~15 KB/s, so big files are fetched as
+    several byte ranges in parallel (--connections, default 8): ~10x faster;
+  * downloads to NAME.part (or NAME.parts/ when parallel), resumes if interrupted,
+    retries on network errors;
   * checks the final size and (for .TIF) that it really is a TIFF image;
   * only then renames it to its real name, and records the URL in data/raw/SOURCES.txt.
 A file that is already present AND valid is skipped; a bad one is replaced.
 
 Options:
   --only illum dem diviner     download just those groups (default: all)
-  --dem-res 80 40 20           DEM resolution(s) in m/px (default: 20, as in the brief).
-                               Tip: `--only dem --dem-res 80 20` gets the small 80 m file
-                               first (181 MB) so P1 is unblocked, then the 2.6 GB 20 m one.
+  --dem-res 80 40 20           DEM resolution(s) in m/px (default: 40, 685 MB, what
+                               config.yaml uses). 20 m is 2.6 GB: hours even in parallel.
+  --connections N              parallel connections per large file (default 8).
   --verify                     don't download; just check what is already on disk.
 """
 from __future__ import annotations
 
 import argparse
+import math
+import threading
+from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
 import http.client
 import os
@@ -36,6 +42,8 @@ RAW = ROOT / "data" / "raw"
 UA = "Mozilla/5.0 (Optima-luna hackathon downloader)"
 CHUNK = 1024 * 1024
 RETRIES = 10
+CONNECTIONS = 8
+PARALLEL_MIN_BYTES = 20 * 1024 * 1024   # smaller files: one connection is fine
 TIFF_MAGIC = (b"II*\x00", b"MM\x00*", b"II+\x00", b"MM\x00+")  # TIFF + BigTIFF
 
 PGDA_ILLUM = "https://pgda.gsfc.nasa.gov/data/MoonIllumination/"
@@ -109,7 +117,64 @@ def probe(url: str) -> tuple[int | None, str, bool]:
         return total, ctype, r.status == 206
 
 
-def fetch(url: str, dest: Path, exact: int | None, min_bytes: int, retries: int = RETRIES, backoff: float = 3.0) -> None:
+def fetch_parallel(url: str, part: Path, total: int, n: int, retries: int = RETRIES) -> None:
+    """Download `url` as n byte ranges at once into part.parent/NAME.parts/, then join into `part`.
+    Each range resumes from what is already on disk, so re-running continues."""
+    pdir = part.with_name(part.name + "s")          # NAME.part -> NAME.parts/
+    pdir.mkdir(parents=True, exist_ok=True)
+    size = math.ceil(total / n)
+    ranges = [(i, i * size, min(total, (i + 1) * size) - 1) for i in range(n)]
+    done = threading.Event()
+
+    def worker(rng):
+        i, start, end = rng
+        p, want = pdir / str(i), end - start + 1
+        for attempt in range(1, retries * 10 + 1):      # throttled server: be patient
+            have = p.stat().st_size if p.exists() else 0
+            if have >= want:
+                return
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": UA, "Range": f"bytes={start + have}-{end}"})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    if r.status != 206:
+                        raise BadDownload("server ignored the byte-range request")
+                    with open(p, "ab") as f:
+                        while buf := r.read(CHUNK):
+                            f.write(buf)
+            except (urllib.error.URLError, http.client.HTTPException, OSError, TimeoutError):
+                time.sleep(min(3 * attempt, 30))
+        raise BadDownload(f"range {i} gave up. Run the script again to resume.")
+
+    def progress():
+        t0 = time.time()
+        first = sum(q.stat().st_size for q in pdir.iterdir())
+        while not done.wait(5):
+            have = sum(q.stat().st_size for q in pdir.iterdir())
+            speed = (have - first) / max(time.time() - t0, 1e-6)
+            eta = f", ETA {(total - have) / speed / 60:.0f} min" if speed > 0 else ""
+            print(f"\r  {human(have)} / {human(total)} {100 * have / total:5.1f}% "
+                  f"{human(speed)}/s over {n} connections{eta}   ", end="", flush=True)
+
+    threading.Thread(target=progress, daemon=True).start()
+    try:
+        with ThreadPoolExecutor(n) as ex:
+            list(ex.map(worker, ranges))
+    finally:
+        done.set()
+        print()
+    with open(part, "wb") as out:
+        for i, _, _ in ranges:
+            with open(pdir / str(i), "rb") as f:
+                while buf := f.read(CHUNK):
+                    out.write(buf)
+    if part.stat().st_size == total:
+        for q in pdir.iterdir():
+            q.unlink()
+        pdir.rmdir()
+
+
+def fetch(url: str, dest: Path, exact: int | None, min_bytes: int, retries: int = RETRIES, backoff: float = 3.0,
+          connections: int = CONNECTIONS) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     total, ctype, can_resume = probe(url)
     if "html" in ctype.lower():
@@ -126,6 +191,14 @@ def fetch(url: str, dest: Path, exact: int | None, min_bytes: int, retries: int 
         dest.unlink()
 
     part = dest.with_name(dest.name + ".part")
+    if can_resume and total and total >= PARALLEL_MIN_BYTES and connections > 1:
+        fetch_parallel(url, part, total, connections, retries)
+        why = validate(part, exact, min_bytes, total)
+        if why:
+            part.unlink(missing_ok=True)
+            raise BadDownload(why)
+        os.replace(part, dest)
+        return
     last_err = None
     for attempt in range(1, retries + 1):
         have = part.stat().st_size if part.exists() else 0
@@ -183,7 +256,8 @@ def log_source(path: Path, url: str) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", nargs="+", choices=["illum", "dem", "diviner"])
-    ap.add_argument("--dem-res", nargs="+", choices=["80", "40", "20"], default=["20"])
+    ap.add_argument("--dem-res", nargs="+", choices=["80", "40", "20"], default=["40"])
+    ap.add_argument("--connections", type=int, default=CONNECTIONS)
     ap.add_argument("--verify", action="store_true", help="only check files already on disk")
     a = ap.parse_args(argv)
 
@@ -200,7 +274,7 @@ def main(argv=None) -> int:
                 print("  OK" if why is None else f"  PROBLEM: {why}")
                 (ok if why is None else failed).append(name)
                 continue
-            fetch(url, dest, exact, min_bytes)
+            fetch(url, dest, exact, min_bytes, connections=a.connections)
             log_source(dest, url)
             ok.append(name)
             print(f"  OK  {human(dest.stat().st_size)}")

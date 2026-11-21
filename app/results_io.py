@@ -87,11 +87,13 @@ def validation_points(val: pd.DataFrame | None, feats: pd.DataFrame | None, radi
         return pd.DataFrame(columns=cols)
     v = val.copy()
     v.columns = [str(c).strip().lower() for c in v.columns]
-    name_c = _pick(v.columns, "name", "site", "label", "candidate", "site_name")
+    name_c = _pick(v.columns, "name", "site", "label", "candidate", "site_name", "reference")
     if name_c is None:
         obj = [c for c in v.columns if v[c].dtype == object]
         name_c = obj[0] if obj else None
-    lat_c, lon_c = _pick(v.columns, "lat", "latitude"), _pick(v.columns, "lon", "longitude", "lng")
+    # src/validate.py writes reference_lat_deg / reference_lon_east_deg (the cited site).
+    lat_c = _pick(v.columns, "lat", "latitude", "reference_lat_deg")
+    lon_c = _pick(v.columns, "lon", "longitude", "lng", "reference_lon_east_deg")
     rank_c = _pick(v.columns, "rank", "site_rank", "rank_n")
 
     flag_c = k_c = None
