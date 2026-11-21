@@ -28,8 +28,7 @@ _STRETCH = ({"width": "stretch"} if "width" in inspect.signature(st.dataframe).p
 ROOT = Path(__file__).resolve().parent.parent
 CFG_PATH = ROOT / "config.yaml"
 
-# Where each feature comes from. Used for the site card until P2's attribution
-# table is wired in (see load_attribution).
+
 SOURCES = {
     "slope_mean": "LOLA DEM (NASA PGDA)", "slope_max": "LOLA DEM (NASA PGDA)",
     "roughness": "LOLA DEM (NASA PGDA)", "crater_density": "Chandrayaan-2 OHRC / catalogue",
@@ -41,7 +40,7 @@ SOURCES = {
 VIEWS = {"Combined": "combined", "Landing safety": "landing", "Resource value": "resource"}
 
 
-# --------------------------------------------------------------------------- data
+
 @st.cache_data(show_spinner=False)
 def load_config() -> dict:
     return yaml.safe_load(CFG_PATH.read_text())
@@ -132,7 +131,7 @@ def _demo_pairs(feats: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-# ----------------------------------------------------------------------- scoring
+
 @st.cache_data(show_spinner=False)
 def normalised(feats: pd.DataFrame) -> pd.DataFrame:
     """0-1 per feature (2nd-98th percentile clip), flipped so 1 is always 'better'.
@@ -188,7 +187,7 @@ def pick_top(df: pd.DataFrame, col: str, n: int, min_sep_m: float) -> pd.DataFra
     return cand.iloc[keep]
 
 
-# ---------------------------------------------------------------------- plotting
+
 def heatmap(df: pd.DataFrame, col: str, cell_m: float, top: pd.DataFrame, sel_id, label: str) -> go.Figure:
     f = max(1, round(5000 / cell_m))  # ~5 km bins for speed
     r = ((df.y - df.y.min()) // cell_m).astype(int) // f
